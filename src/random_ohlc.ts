@@ -196,4 +196,5 @@ class RandomOHLC {
 }
 
 // Only export the classes that are needed by other files
-export { RandomOHLC, TimeFrameData, OhlcBar, DataFrameRow }; 
+export { RandomOHLC };
+export type { TimeFrameData, OhlcBar, DataFrameRow }; 
