@@ -1,18 +1,26 @@
-import { DataFrame } from 'data-forge';
+/*********************************************************************
+ *  random-ohlc.ts
+ *
+ *  Generate synthetic OHLC price data using Geometric Brownian Motion.
+ *  Manage timestamps with Luxon.
+ *********************************************************************/
+
 import { DateTime } from "luxon";
 
 /**
- * Interface for mapping timeframes to their DataFrame representations
+ * Interface for the collection of OHLC data returned.
+ * Keys are the timeframe strings (e.g., '1M', '1W', etc.),
+ * and values are arrays of OHLC bars.
  */
-interface TimeFrameData {
-    [key: string]: DataFrame;
+interface TimeframeDict {
+    [timeframe: string]: OhlcRow[];
 }
 
 /**
- * Structure for OHLC (Open, High, Low, Close) bar data
+ * Interface representing a single row in the OHLC data.
  */
-interface OhlcBar {
-    time: Date;
+interface OhlcRow {
+    timestamp: number; // Unix timestamp (seconds)
     open: number;
     high: number;
     low: number;
@@ -20,181 +28,206 @@ interface OhlcBar {
 }
 
 /**
- * Structure for DataFrame row containing price data
+ * A class to generate synthetic OHLC price data using Geometric Brownian Motion.
  */
-interface DataFrameRow {
-    price: number;
-}
-
-/**
- * Generates random OHLC (Open, High, Low, Close) price data using Geometric Brownian Motion
- */
-class RandomOHLC {
-    private daysNeeded: number;
-    private startPrice: number;
-    private volatility: number;
-    private drift: number;
-    private timeframes: string[];
+export class RandomOHLC {
+    private readonly daysNeeded: number;
+    private readonly startPrice: number;
+    private readonly volatility: number;
+    private readonly drift: number;
 
     /**
-     * Creates a new RandomOHLC instance
-     * @param config Configuration object containing simulation parameters
-     * @throws Error if any parameters are invalid
+     * Initialize the RandomOHLC instance.
+     *
+     * @param config - Configuration object containing:
+     *   - daysNeeded: Number of days of data to generate
+     *   - startPrice: Initial price for the simulation
+     *   - volatility: Annual volatility parameter for GBM (1-3 typical)
+     *   - drift: Annual drift parameter for GBM (1-3 typical)
      */
-    constructor({
-        daysNeeded,
-        startPrice,
-        volatility,
-        drift
-    }: {
-        /** Number of days to simulate */
+    constructor(config: {
         daysNeeded: number;
-        /** Initial price */
         startPrice: number;
-        /** Annual volatility */
         volatility: number;
-        /** Annual drift (trend) */
         drift: number;
     }) {
-        if (daysNeeded <= 0) throw new Error('daysNeeded must be positive');
-        if (startPrice <= 0) throw new Error('startPrice must be positive');
-        if (volatility < 0) throw new Error('volatility cannot be negative');
-        
-        this.daysNeeded = daysNeeded;
-        this.startPrice = startPrice;
-        this.volatility = volatility;
-        this.drift = drift;
-        this.timeframes = ["1min", "5min", "15min", "1H", "4H", "1D"];
+        this.daysNeeded = config.daysNeeded;
+        this.startPrice = config.startPrice;
+        this.volatility = config.volatility;
+        this.drift = config.drift;
+
+        // log the config
+        console.log(config);
     }
 
-    /**
-     * Generates a random number from a standard normal distribution using Box-Muller transform
-     * @returns Random number from N(0,1)
-     */
-    private normalRandom(): number {
-        const u1 = Math.random();
-        const u2 = Math.random();
-        return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-    }
 
     /**
-     * Generates a series of prices using Geometric Brownian Motion
-     * @param numBars Number of price points to generate
-     * @returns Array of simulated prices
-     * @throws Error if numBars is not positive
+     * Generate OHLC price data and resample to multiple timeframes.
+     * Returns an object whose keys are the timeframe intervals (e.g., '1M'),
+     * and values are arrays of OHLC bars.
      */
-    public generateRandomPrices(numBars: number): number[] {
-        if (numBars <= 0) {
-            throw new Error('Number of bars must be positive');
+    public generateOhlcData(): TimeframeDict {
+        const minutesInDay = 1440;
+        const numMinutes = this.daysNeeded * minutesInDay;
+
+        console.info(
+            `Generating ${this.daysNeeded} days of data (${numMinutes} minutes).`
+        );
+
+        // Generate random prices at minute-level
+        const randPrices = this.generateRandomPrices(numMinutes);
+
+        // Create a Luxon DateTime range, from a fixed start date
+        const startDate = DateTime.fromISO("2030-01-01T00:00:00");
+        const dates: DateTime[] = [];
+        for (let i = 0; i < numMinutes; i++) {
+            dates.push(startDate.plus({ minutes: i }));
         }
+        console.info(
+            `Date range: ${dates[0].toISO()} to ${dates[dates.length - 1].toISO()}`
+        );
 
-        const minuteVol = this.volatility / Math.sqrt(525600);
-        const minuteDrift = this.drift / 525600;
-        const dt = 1;
+        // Create minute-level OHLC data
+        const minuteData: OhlcRow[] = dates.map((date, idx) => ({
+            timestamp: Math.trunc(date.toSeconds()),
+            open: randPrices[idx],
+            high: randPrices[idx],
+            low: randPrices[idx],
+            close: randPrices[idx]
+        }));
+
+        // Adjust open prices to ensure continuity
+        this.adjustOpenPrices(minuteData);
+
+        // Create data for different timeframes
+        return this.createTimeframeData(minuteData);
+    }
+
+    /**
+     * Generate simulated prices using Geometric Brownian Motion.
+     * @param numBars Number of price points (minutes) to generate.
+     */
+    private generateRandomPrices(numBars: number): number[] {
+        // Convert annual volatility & drift into per-minute values
+
+        const minutesInYear = 525600;
+        const minuteVol = this.volatility / Math.sqrt(minutesInYear);
+        const minuteDrift = this.drift / minutesInYear;
+
+        console.info("Generating GBM prices...");
+        console.info(`  Start price: $${this.startPrice.toFixed(2)}`);
+        console.info(`  Per-minute volatility: ${minuteVol.toPrecision(6)} (annual: ${this.volatility})`);
+        console.info(`  Per-minute drift: ${minuteDrift.toPrecision(6)} (annual: ${this.drift})`);
+
         const prices = [this.startPrice];
+        for (let i = 1; i < numBars; i++) {
+            const shock = this.randomNormal(0, 1);
+            const price =
+                prices[i - 1] *
+                Math.exp(
+                    (minuteDrift - 0.5 * Math.pow(minuteVol, 2)) * 1 +
+                        minuteVol * shock
+                );
 
-        for (let i = 0; i < numBars - 1; i++) {
-            const shock = this.normalRandom();
-            const nextPrice = prices[i] * Math.exp(
-                (minuteDrift - 0.5 * minuteVol ** 2) * dt + minuteVol * shock
-            );
-            prices.push(Number(nextPrice.toFixed(2)));
+            // round to 2 decimal places
+            prices.push(Math.round(price * 100) / 100);
         }
 
+        const finalPrice = prices[prices.length - 1];
+        const totalReturn =
+            ((finalPrice - this.startPrice) / this.startPrice) * 100.0;
+
+        console.info(`  Final price: $${finalPrice.toFixed(2)}`);
+        console.info(`  Total return: ${totalReturn.toFixed(2)}%`);
         return prices;
     }
 
     /**
-     * Creates an array of dates starting from 2030-01-01
-     * @param length Number of dates to generate
-     * @returns Array of dates with 1-minute intervals
+     * Box-Muller transform to generate normally distributed random numbers.
      */
-    private createTimeIndex(length: number): Date[] {
-        const startDate = DateTime.fromISO('2030-01-01T00:00:00Z');
-        return Array.from({ length }, (_, i) => 
-            startDate.plus({ minutes: i }).toJSDate()
-        );
+    private randomNormal(mean: number, stdDev: number): number {
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        return mean + z0 * stdDev;
     }
 
     /**
-     * Converts a timeframe string to minutes
-     * @param interval Timeframe string (e.g., "1min", "1H", "1D")
-     * @returns Number of minutes in the interval
-     * @throws Error if interval format is invalid
+     * Adjust open prices so that each candle's open = previous candle's close,
+     * ensuring continuity.
      */
-    private intervalToMinutes(interval: string): number {
-        const match = interval.match(/(\d+)(\w+)/);
-        if (!match) {
-            throw new Error(`Invalid interval format: ${interval}`);
-        }
+    private adjustOpenPrices(data: OhlcRow[]): void {
+        if (data.length === 0) return;
 
-        const [_, num, unit] = match;
-        const value = parseInt(num);
+        // First candle's open is the startPrice
+        data[0].open = this.startPrice;
 
-        switch (unit) {
-            case 'min': return value;
-            case 'H': return value * 60;
-            case 'D': return value * 1440;
-            default: return 1;
+        // Each subsequent candle's open is the previous candle's close
+        for (let i = 1; i < data.length; i++) {
+            data[i].open = data[i - 1].close;
         }
     }
 
     /**
-     * Generates OHLC data for multiple timeframes
-     * @returns Object mapping timeframes to their OHLC DataFrames
-     * @throws Error if data generation fails
+     * Create OHLC data for multiple timeframes by grouping and aggregating
+     * the minute-level data.
      */
-    public generateOhlcData(): TimeFrameData {
-        const numBars = this.daysNeeded * 1440;
-        const prices = this.generateRandomPrices(numBars);
-        const timeIndex = this.createTimeIndex(numBars);
-        
-        // Create base DataFrame with proper structure
-        const df = new DataFrame({
-            values: timeIndex.map((time, i) => ({
-                time,
-                price: prices[i]
-            }))
+    private createTimeframeData(minuteData: OhlcRow[]): TimeframeDict {
+        const timeIntervals = ["1H", "4H", "1D", "1W", "1M"];
+        const result: TimeframeDict = {};
+
+        for (const interval of timeIntervals) {
+            result[interval] = this.resampleToTimeframe(minuteData, interval);
+        }
+
+        return result;
+    }
+
+    /**
+     * Resample minute-level data to a larger timeframe.
+     */
+    private resampleToTimeframe(data: OhlcRow[], timeInterval: string): OhlcRow[] {
+        const groups = new Map<string, OhlcRow[]>();
+
+        // Group data by time interval
+        data.forEach(bar => {
+            const date = DateTime.fromSeconds(bar.timestamp);
+            const key = this.getTimeKey(date, timeInterval);
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key)!.push(bar);
         });
 
-        try {
-            const result: TimeFrameData = {};
+        // Aggregate each group into a single OHLC bar
+        return Array.from(groups.entries())
+            .map(([_, bars]) => ({
+                timestamp: bars[0].timestamp,
+                open: bars[0].open,
+                high: Math.max(...bars.map(b => b.high)),
+                low: Math.min(...bars.map(b => b.low)),
+                close: bars[bars.length - 1].close
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp);
+    }
 
-            for (const tf of this.timeframes) {
-                const minutes = this.intervalToMinutes(tf);
-                
-                // Resample to desired timeframe
-                const resampled = df
-                    .groupBy(row => {
-                        const date = row.time as Date;
-                        const roundedDate = new Date(
-                            Math.floor(date.getTime() / (minutes * 60000)) * minutes * 60000
-                        );
-                        return roundedDate;
-                    })
-                    .select(group => {
-                        const prices = group.select(row => row.price).toArray();
-                        return {
-                            time: group.first().time,
-                            open: prices[0],
-                            high: Math.max(...prices),
-                            low: Math.min(...prices),
-                            close: prices[prices.length - 1]
-                        } as OhlcBar;
-                    })
-                    .toArray();
-
-                result[tf] = new DataFrame(resampled);
-            }
-
-            return result;
-        } catch (error) {
-            console.error('Error in generateOhlcData:', error);
-            throw error;
+    /**
+     * Get a string key for grouping based on the timeframe.
+     */
+    private getTimeKey(date: DateTime, timeInterval: string): string {
+        switch (timeInterval) {
+            case "1H":
+                return date.toFormat("yyyy-MM-dd-HH");
+            case "4H":
+                return date.toFormat("yyyy-MM-dd-") + (Math.floor(date.hour / 4) * 4).toString().padStart(2, "0");
+            case "1D":
+                return date.toFormat("yyyy-MM-dd");
+            case "1W":
+                return date.toFormat("yyyy-WW");
+            case "1M":
+                return date.toFormat("yyyy-MM");
+            default:
+                throw new Error(`Unsupported timeframe: ${timeInterval}`);
         }
     }
 }
-
-// Only export the classes that are needed by other files
-export { RandomOHLC };
-export type { TimeFrameData, OhlcBar, DataFrameRow }; 

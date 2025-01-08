@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { WelcomePage } from './components/WelcomePage';
+import { GameScreen } from './components/GameScreen';
 
 const darkTheme = createTheme({
   palette: {
@@ -22,14 +23,14 @@ const App: React.FC = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [difficulty, setDifficulty] = useState('');
 
-  useEffect(() => {
-    console.log('App mounted');
-  }, []);
-
   const handleStart = (selectedDifficulty: string) => {
-    console.log('Starting game with difficulty:', selectedDifficulty);
     setDifficulty(selectedDifficulty);
     setGameStarted(true);
+  };
+
+  const handleGameEnd = () => {
+    setGameStarted(false);
+    setDifficulty('');
   };
 
   return (
@@ -39,7 +40,7 @@ const App: React.FC = () => {
         {!gameStarted ? (
           <WelcomePage onStart={handleStart} />
         ) : (
-          <div>Game Started with difficulty: {difficulty}</div>
+          <GameScreen difficulty={difficulty} onGameEnd={handleGameEnd} />
         )}
       </div>
     </ThemeProvider>
