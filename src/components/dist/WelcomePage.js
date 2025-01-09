@@ -17,18 +17,21 @@ var difficultyDescriptions = {
 };
 exports.WelcomePage = function (_a) {
     var onStartGame = _a.onStartGame;
-    var _b = react_1.useState(''), selectedDifficulty = _b[0], setSelectedDifficulty = _b[1];
+    var _b = react_1.useState('Easy'), selectedDifficulty = _b[0], setSelectedDifficulty = _b[1];
     // Track component mounting
     react_1.useEffect(function () {
         console.log('WelcomePage mounted');
     }, []);
     // Track difficulty changes
     react_1.useEffect(function () {
-        console.log('Difficulty changed to:', selectedDifficulty);
+        if (selectedDifficulty) {
+            console.log('Difficulty changed to:', selectedDifficulty);
+        }
     }, [selectedDifficulty]);
     var handleDifficultyChange = function (event) {
-        console.log('Difficulty change event:', event.target.value);
-        setSelectedDifficulty(event.target.value);
+        var newDifficulty = event.target.value;
+        console.log('Setting difficulty to:', newDifficulty);
+        setSelectedDifficulty(newDifficulty);
     };
     var handleStart = function () {
         console.log('Start button clicked');

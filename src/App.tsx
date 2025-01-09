@@ -7,66 +7,66 @@
  *********************************************************************/
 
 import React, { useState } from 'react';
-import { ThemeProvider, createTheme } from '@mui/material';
 import { WelcomePage } from './components/WelcomePage';
 import { GameScreen } from './components/GameScreen';
+import { ResultsPage } from './components/ResultsPage';
 
-/*
- * Custom dark theme configuration for Material-UI.
- * Uses a dark color scheme with blue accents for better visibility
- * of financial charts and data.
- */
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#2196f3',
-    },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
-  },
-});
+type GameState = 'welcome' | 'playing' | 'results';
 
-/**
- * Main App component that controls the application flow.
- * Handles:
- * 1. Game state management (welcome screen vs game screen)
- * 2. Difficulty level selection
- * 3. Theme application
- */
+interface GameScore {
+  right: number;
+  wrong: number;
+}
+
 export const App: React.FC = () => {
-  // Track if a game is in progress
-  const [isPlaying, setIsPlaying] = useState(false);
-  // Store the selected difficulty level
+  const [gameState, setGameState] = useState<GameState>('welcome');
   const [difficulty, setDifficulty] = useState<string>('');
+  const [score, setScore] = useState<GameScore>({ right: 0, wrong: 0 });
 
-  /*
-   * Handle game start with selected difficulty.
-   * Transitions from welcome screen to game screen.
-   */
   const handleStartGame = (selectedDifficulty: string) => {
+    console.log('Starting game with difficulty:', selectedDifficulty);
     setDifficulty(selectedDifficulty);
-    setIsPlaying(true);
+    setScore({ right: 0, wrong: 0 });
+    setGameState('playing');
   };
 
-  /*
-   * Handle game end.
-   * Returns to welcome screen and resets difficulty.
-   */
-  const handleGameEnd = () => {
-    setIsPlaying(false);
+  const handleGameEnd = (finalScore: GameScore) => {
+    console.log('Game ended with score:', finalScore);
+    setScore(finalScore);
+    setGameState('results');
+  };
+
+  const handlePlayAgain = () => {
+    console.log('Starting new game with same difficulty');
+    setScore({ right: 0, wrong: 0 });
+    setGameState('playing');
+  };
+
+  const handleBackToMenu = () => {
+    console.log('Returning to welcome screen');
+    setGameState('welcome');
     setDifficulty('');
+    setScore({ right: 0, wrong: 0 });
   };
 
-  return (
-    <ThemeProvider theme={darkTheme}>
-      {isPlaying ? (
-        <GameScreen difficulty={difficulty} onGameEnd={handleGameEnd} />
-      ) : (
-        <WelcomePage onStartGame={handleStartGame} />
-      )}
-    </ThemeProvider>
-  );
+  switch (gameState) {
+    case 'playing':
+      return (
+        <GameScreen 
+          difficulty={difficulty} 
+          onGameEnd={handleGameEnd}
+        />
+      );
+    case 'results':
+      return (
+        <ResultsPage 
+          score={score}
+          difficulty={difficulty}
+          onPlayAgain={handlePlayAgain}
+          onBackToMenu={handleBackToMenu}
+        />
+      );
+    default:
+      return <WelcomePage onStartGame={handleStartGame} />;
+  }
 };

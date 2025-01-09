@@ -19,7 +19,7 @@ import { DateTime } from 'luxon';
 
 interface GameScreenProps {
   difficulty: string;
-  onGameEnd: () => void;
+  onGameEnd: (score: { right: number; wrong: number }) => void;
 }
 
 /**
@@ -36,21 +36,24 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   const [attempt, setAttempt] = useState(1);
   const [showResult, setShowResult] = useState(false);
   const [correctPrice, setCorrectPrice] = useState<string>('');
+  
+  // Ref to track initialization
+  const hasInitialized = React.useRef(false);
 
   // Initialize game on mount
   useEffect(() => {
-    let mounted = true;
-
-    const initializeGame = async () => {
-      if (mounted) {
-        generateNewRound();
-      }
-    };
-
-    initializeGame();
+    console.log('GameScreen initialization started');
+    
+    if (!hasInitialized.current) {
+      console.log('Generating initial game data');
+      generateNewRound();
+      hasInitialized.current = true;
+    } else {
+      console.log('Skipping duplicate initialization');
+    }
 
     return () => {
-      mounted = false;
+      console.log('GameScreen cleanup');
     };
   }, []);
 
@@ -59,11 +62,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
    * Creates new price data and updates game state.
    */
   const generateNewRound = () => {
+    console.log('Generating new round');
     setLoading(true);
-    const data = generateRandomData();
-    const processedData = processOhlcData(data);
-    const { choices, futurePrice } = generateChoices(processedData, difficulty);
-    updateGameState(processedData, choices, futurePrice);
+    
+    try {
+      const data = generateRandomData();
+      const processedData = processOhlcData(data);
+      const { choices, futurePrice } = generateChoices(processedData, difficulty);
+      updateGameState(processedData, choices, futurePrice);
+    } catch (error) {
+      console.error('Error generating new round:', error);
+      setLoading(false);
+    }
   };
 
   /**
@@ -71,6 +81,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
    * Creates 90 days of price data with random volatility and drift.
    */
   const generateRandomData = () => {
+    console.log('Generating random OHLC data');
     const volatility = Math.random() * 2 + 1;
     const drift = Math.random() * 2 + 1;
 
@@ -233,34 +244,127 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     choices: string[],
     futurePrice: number
   ) => {
+    console.log('Updating game state with:', { choices, futurePrice });
     setHistoricalData(processedData);
     setPriceChoices(choices);
-    setCorrectPrice(choices[0]);
+    setCorrectPrice(futurePrice.toFixed(2));
     setSelectedChoice('');
     setShowResult(false);
     setLoading(false);
   };
 
-  const handleSubmit = () => {
-    if (!selectedChoice) return;
-
-    if (selectedChoice === correctPrice) {
-      setScore((prev) => ({ ...prev, right: prev.right + 1 }));
-    } else {
-      setScore((prev) => ({ ...prev, wrong: prev.wrong + 1 }));
-    }
-    setShowResult(true);
+  const debugWrapper = (fn: Function, name: string) => {
+    return (...args: any[]) => {
+      console.log(`Entering ${name}`);
+      try {
+        const result = fn(...args);
+        console.log(`Exiting ${name}`);
+        return result;
+      } catch (error) {
+        console.error(`Error in ${name}:`, error);
+        throw error;
+      }
+    };
   };
 
+  const handleSubmit = debugWrapper(() => {
+    console.log('Submit button clicked');
+    console.log('Current game state:', {
+      selectedChoice,
+      correctPrice,
+      priceChoices,
+      showResult,
+      score,
+      attempt
+    });
+    
+    if (!selectedChoice) {
+      console.warn('No choice selected, returning early');
+      return;
+    }
+
+    try {
+      console.log('Processing submission...');
+      if (selectedChoice === correctPrice) {
+        console.log('Correct answer! Selected:', selectedChoice, 'Correct:', correctPrice);
+        setScore((prev) => {
+          const newScore = { ...prev, right: prev.right + 1 };
+          console.log('Updated score:', newScore);
+          return newScore;
+        });
+      } else {
+        console.log('Wrong answer. Selected:', selectedChoice, 'Correct:', correctPrice);
+        setScore((prev) => {
+          const newScore = { ...prev, wrong: prev.wrong + 1 };
+          console.log('Updated score:', newScore);
+          return newScore;
+        });
+      }
+      console.log('Setting showResult to true');
+      setShowResult(true);
+      console.log('Submission processing complete');
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+    }
+  }, 'handleSubmit');
+
+  const handleSubmitClick = debugWrapper((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    console.log('Submit button clicked - direct handler');
+    handleSubmit();
+  }, 'handleSubmitClick');
+
+  // Add logging to track state changes
+  useEffect(() => {
+    console.log('Score changed:', score);
+  }, [score]);
+
+  useEffect(() => {
+    console.log('ShowResult changed:', showResult);
+  }, [showResult]);
+
   const handleNext = () => {
+    console.log('Next round button clicked');
+    console.log('Current attempt:', attempt);
+    
     if (attempt >= 5) {
-      // Game over
-      onGameEnd();
+      console.log('Game over, returning to menu with score:', score);
+      onGameEnd(score);
     } else {
-      setAttempt((prev) => prev + 1);
+      console.log('Starting next round');
+      setAttempt((prev) => {
+        console.log('Incrementing attempt from', prev, 'to', prev + 1);
+        return prev + 1;
+      });
+      setShowResult(false);
+      setSelectedChoice('');
       generateNewRound();
     }
   };
+
+  const handleBackToMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    onGameEnd(score);
+  };
+
+  const handleNextClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    handleNext();
+  };
+
+  // Add test logging on mount
+  useEffect(() => {
+    console.log('GameScreen mounted');
+    console.log('Initial state:', {
+      difficulty,
+      priceChoices,
+      selectedChoice,
+      correctPrice,
+      showResult,
+      score,
+      attempt
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -326,7 +430,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
           </Typography>
           <Button 
             variant="outlined" 
-            onClick={onGameEnd}
+            onClick={handleBackToMenu}
             sx={{
               borderColor: 'rgba(0, 245, 160, 0.5)',
               color: '#00F5A0',
@@ -399,7 +503,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
           </Typography>
           <RadioGroup 
             value={selectedChoice} 
-            onChange={(e) => setSelectedChoice(e.target.value)}
+            onChange={(e) => {
+              console.log('Radio selection changed:', e.target.value);
+              setSelectedChoice(e.target.value);
+            }}
             sx={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -456,7 +563,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
             </Typography>
             <Button
               variant="contained"
-              onClick={handleNext}
+              onClick={handleNextClick}
               size="large"
               sx={{
                 display: 'block',
@@ -469,6 +576,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
                 fontWeight: 600,
                 letterSpacing: 1,
                 border: 0,
+                zIndex: 10,
+                position: 'relative',
                 '&:hover': {
                   background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
                   boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',
@@ -481,7 +590,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
         ) : (
           <Button
             variant="contained"
-            onClick={handleSubmit}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Submit button clicked - raw event');
+              console.log('Current state:', {
+                selectedChoice,
+                correctPrice,
+                showResult,
+                score
+              });
+              
+              if (selectedChoice === correctPrice) {
+                setScore(prev => ({ ...prev, right: prev.right + 1 }));
+              } else {
+                setScore(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+              }
+              setShowResult(true);
+            }}
+            onMouseDown={(e) => {
+              console.log('Button mousedown event');
+              e.stopPropagation();
+            }}
+            onMouseUp={(e) => {
+              console.log('Button mouseup event');
+              e.stopPropagation();
+            }}
             size="large"
             disabled={!selectedChoice}
             sx={{
@@ -495,6 +629,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
               fontWeight: 600,
               letterSpacing: 1,
               border: 0,
+              zIndex: 10,
+              position: 'relative',
               '&:hover': {
                 background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
                 boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',

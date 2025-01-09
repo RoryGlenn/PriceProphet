@@ -29,7 +29,7 @@ const difficultyDescriptions: { [key: string]: string } = {
 };
 
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('Easy');
 
   // Track component mounting
   useEffect(() => {
@@ -38,12 +38,15 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
 
   // Track difficulty changes
   useEffect(() => {
-    console.log('Difficulty changed to:', selectedDifficulty);
+    if (selectedDifficulty) {
+      console.log('Difficulty changed to:', selectedDifficulty);
+    }
   }, [selectedDifficulty]);
 
   const handleDifficultyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('Difficulty change event:', event.target.value);
-    setSelectedDifficulty(event.target.value);
+    const newDifficulty = event.target.value;
+    console.log('Setting difficulty to:', newDifficulty);
+    setSelectedDifficulty(newDifficulty);
   };
 
   const handleStart = () => {
