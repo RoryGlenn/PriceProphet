@@ -22,7 +22,12 @@ interface GameScreenProps {
   onGameEnd: () => void;
 }
 
+/**
+ * GameScreen component handles the main game logic and UI.
+ * Manages game state, data generation, and user interactions.
+ */
 export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd }) => {
+  // Game state
   const [historicalData, setHistoricalData] = useState<{ [key: string]: OhlcBar[] }>({});
   const [priceChoices, setPriceChoices] = useState<string[]>([]);
   const [selectedChoice, setSelectedChoice] = useState<string>('');
@@ -32,52 +37,202 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   const [showResult, setShowResult] = useState(false);
   const [correctPrice, setCorrectPrice] = useState<string>('');
 
+  // Initialize game on mount
   useEffect(() => {
-    generateNewRound();
+    let mounted = true;
+
+    const initializeGame = async () => {
+      if (mounted) {
+        generateNewRound();
+      }
+    };
+
+    initializeGame();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
+  /**
+   * Generate a new round of the game.
+   * Creates new price data and updates game state.
+   */
   const generateNewRound = () => {
     setLoading(true);
+    const data = generateRandomData();
+    const processedData = processOhlcData(data);
+    const { choices, futurePrice } = generateChoices(processedData, difficulty);
+    updateGameState(processedData, choices, futurePrice);
+  };
 
-
-    // generate a random float from 1-3 and set it equal to the volatility
+  /**
+   * Generate random OHLC data using RandomOHLC class.
+   * Creates 90 days of price data with random volatility and drift.
+   */
+  const generateRandomData = () => {
     const volatility = Math.random() * 2 + 1;
     const drift = Math.random() * 2 + 1;
 
-    // generate random OHLC data
     const randOHLC = new RandomOHLC({
-      daysNeeded: 91,
-      startPrice: 100,
+      daysNeeded: 90,
+      startPrice: 10000,
       volatility: volatility,
       drift: drift,
     });
 
-    const data = randOHLC.generateOhlcData();
-    const timeframes = ['1H', '4H', '1D', '1W', '1M'];
+    return randOHLC.generateOhlcData();
+  };
+
+  /**
+   * Process raw OHLC data into format required by chart component.
+   * Handles different time intervals and timestamp formats.
+   *
+   * @param data Raw OHLC data from RandomOHLC
+   * @returns Processed data suitable for charting
+   */
+  const processOhlcData = (data: { [key: string]: OhlcRow[] }) => {
+    /*
+     * We support multiple time intervals from 1min to 1M.
+     * Each interval needs its own array of properly formatted OHLC bars.
+     * The chart component expects specific time formats:
+     * - For intraday (1min to 4H): Unix timestamps
+     * - For daily and above: 'yyyy-MM-dd' strings
+     */
+    const timeIntervals = ['1min', '5min', '15min', '1H', '4H', '1D', '1W', '1M'];
     const processedData: { [key: string]: OhlcBar[] } = {};
 
-    timeframes.forEach((tf) => {
+    timeIntervals.forEach((tf) => {
       processedData[tf] = data[tf]
-        .map((bar: OhlcRow): OhlcBar => ({
-          time: DateTime.fromSeconds(bar.timestamp).toFormat('yyyy-MM-dd') as Time,
-          open: bar.open,
-          high: bar.high,
-          low: bar.low,
-          close: bar.close,
-        }))
-        .sort((a: OhlcBar, b: OhlcBar) => (a.time < b.time ? -1 : 1));
+        .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, tf))
+        .sort((a: OhlcBar, b: OhlcBar) => sortOhlcBars(a, b));
     });
 
-    // Get the future price based on difficulty
-    const futureIndex = difficulty === 'Easy' ? 1 : difficulty === 'Medium' ? 7 : 30;
+    logDataStructure(processedData);
+    return processedData;
+  };
+
+  /**
+   * Format an OHLC bar for the chart component.
+   * Handles different timestamp formats based on time interval.
+   *
+   * @param bar Raw OHLC bar
+   * @param timeInterval Time interval of the data
+   * @returns Formatted OHLC bar
+   */
+  const formatOhlcBar = (bar: OhlcRow, timeInterval: string): OhlcBar => {
+    /*
+     * The chart library (lightweight-charts) requires different time formats:
+     * 1. For intraday data (1min to 4H): Use Unix timestamps
+     *    - Allows precise time display including hours and minutes
+     *    - Maintains exact time spacing between bars
+     * 
+     * 2. For daily and above (1D, 1W, 1M): Use 'yyyy-MM-dd' strings
+     *    - Automatically handles business days
+     *    - Properly spaces bars for weekends and holidays
+     */
+    const date = DateTime.fromSeconds(bar.timestamp);
+    
+    if (timeInterval.includes('min') || timeInterval.includes('H')) {
+      return {
+        time: bar.timestamp as Time,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+      };
+    }
+    
+    return {
+      time: date.toFormat('yyyy-MM-dd') as Time,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+    };
+  };
+
+  /**
+   * Sort OHLC bars by time.
+   * Handles both timestamp and date string formats.
+   */
+  const sortOhlcBars = (a: OhlcBar, b: OhlcBar): number =>
+    typeof a.time === 'number' ? a.time - (b.time as number) : a.time < b.time ? -1 : 1;
+
+  /**
+   * Log data structure for debugging.
+   * Shows available time intervals and number of bars.
+   */
+  const logDataStructure = (processedData: { [key: string]: OhlcBar[] }) => {
+    console.log('Available time intervals:', Object.keys(processedData));
+    console.log('Data structure:', {
+      timeIntervals: Object.keys(processedData),
+      sampleSizes: Object.entries(processedData).map(([tf, data]) => `${tf}: ${data.length} bars`),
+    });
+  };
+
+  /**
+   * Generate price choices for the game round.
+   * Removes future data based on difficulty level.
+   *
+   * @param processedData Processed OHLC data
+   * @param difficulty Game difficulty level
+   * @returns Price choices and correct future price
+   */
+  const generateChoices = (
+    processedData: { [key: string]: OhlcBar[] },
+    difficulty: string
+  ): { choices: string[]; futurePrice: number } => {
+    /*
+     * Game mechanics for price prediction:
+     * 1. Get the prediction timeframe based on difficulty:
+     *    - Easy: 1 day into the future
+     *    - Medium: 1 week into the future
+     *    - Hard: 1 month into the future
+     * 
+     * 2. Take the last price from the daily data as the "future" price
+     * 
+     * 3. Remove the corresponding amount of data from all timeframes
+     *    to hide the future prices from the player
+     */
+    const futureIndex = getFutureIndex(difficulty);
     const futurePrice = processedData['1D'][processedData['1D'].length - 1].close;
     const choices = generatePriceChoices(futurePrice);
 
-    // Remove future data from all timeframes
+    // Remove future data from all time intervals to maintain consistency
     Object.keys(processedData).forEach((tf) => {
       processedData[tf] = processedData[tf].slice(0, -futureIndex);
     });
 
+    return { choices, futurePrice };
+  };
+
+  /**
+   * Get future index based on difficulty level.
+   * Easy: 1 day, Medium: 7 days, Hard: 30 days
+   */
+  const getFutureIndex = (difficulty: string): number => {
+    switch (difficulty) {
+      case 'Easy':
+        return 1;
+      case 'Medium':
+        return 7;
+      case 'Hard':
+        return 30;
+      default:
+        return 1;
+    }
+  };
+
+  /**
+   * Update game state with new round data.
+   * Resets selection and result states.
+   */
+  const updateGameState = (
+    processedData: { [key: string]: OhlcBar[] },
+    choices: string[],
+    futurePrice: number
+  ) => {
     setHistoricalData(processedData);
     setPriceChoices(choices);
     setCorrectPrice(choices[0]);
@@ -152,7 +307,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
 
         {showResult ? (
           <>
-            <Typography variant="h6" color={selectedChoice === correctPrice ? 'success.main' : 'error.main'}>
+            <Typography
+              variant="h6"
+              color={selectedChoice === correctPrice ? 'success.main' : 'error.main'}
+            >
               {selectedChoice === correctPrice
                 ? 'Correct! Well done!'
                 : `Wrong! The correct price was ${correctPrice}`}
@@ -181,4 +339,4 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
       </Paper>
     </Container>
   );
-}; 
+};

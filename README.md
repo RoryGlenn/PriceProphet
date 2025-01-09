@@ -7,12 +7,14 @@ This React-based application challenges users to predict future stock closing pr
 - **Realistic Data Generation:**  
   Utilizes a custom `RandomOHLC` class to generate minute-level price data and then aggregates it into daily OHLC bars for display.
 
-- **Difficulty Levels:**  
+- **Difficulty Levels:**
+
   - **Easy:** Predict the closing price 1 day in the future.
   - **Medium:** Predict the closing price 7 days in the future.
   - **Hard:** Predict the closing price 30 days in the future.
 
-- **Game States:**  
+- **Game States:**
+
   - **START:** Prompting the user to select difficulty and begin.
   - **INITIAL:** Displaying past 90 days of data, waiting for the user's first guess.
   - **SHOW_RESULT:** After a guess, showing correctness and allowing progression.
@@ -38,10 +40,12 @@ This React-based application challenges users to predict future stock closing pr
 ## Getting Started
 
 ### Prerequisites
+
 - **Node.js 16+**
 - **npm** or **yarn** for package management
 
 ### Installation
+
 ```bash
 git clone https://github.com/yourusername/stock-prediction-game.git
 cd stock-prediction-game
@@ -49,12 +53,15 @@ npm install  # or yarn install
 ```
 
 ### Running the App
+
 ```bash
 npm start  # or yarn start
 ```
+
 Then open `http://localhost:3000` in your browser.
 
 ### Building for Production
+
 ```bash
 npm run build  # or yarn build
 ```
@@ -89,7 +96,6 @@ src/
 
 - **Adjust Days:**  
   Modify `NUM_BARS` constant to simulate more or fewer days.
-  
 - **Volatility and Drift:**  
   Adjust the random ranges for volatility and drift in `RandomOHLC` class to produce different price dynamics.
 
