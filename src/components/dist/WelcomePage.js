@@ -18,11 +18,23 @@ var difficultyDescriptions = {
 exports.WelcomePage = function (_a) {
     var onStartGame = _a.onStartGame;
     var _b = react_1.useState(''), selectedDifficulty = _b[0], setSelectedDifficulty = _b[1];
+    // Track component mounting
+    react_1.useEffect(function () {
+        console.log('WelcomePage mounted');
+    }, []);
+    // Track difficulty changes
+    react_1.useEffect(function () {
+        console.log('Difficulty changed to:', selectedDifficulty);
+    }, [selectedDifficulty]);
     var handleDifficultyChange = function (event) {
+        console.log('Difficulty change event:', event.target.value);
         setSelectedDifficulty(event.target.value);
     };
     var handleStart = function () {
+        console.log('Start button clicked');
+        console.log('Selected difficulty:', selectedDifficulty);
         if (selectedDifficulty) {
+            console.log('Calling onStartGame with difficulty:', selectedDifficulty);
             onStartGame(selectedDifficulty);
         }
     };
@@ -34,7 +46,7 @@ exports.WelcomePage = function (_a) {
             background: 'linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)',
             padding: 0
         } },
-        react_1["default"].createElement(material_1.Paper, { elevation: 24, sx: {
+        react_1["default"].createElement(material_1.Paper, { elevation: 24, onClick: function () { return console.log('Paper clicked'); }, sx: {
                 width: '100%',
                 maxWidth: 500,
                 p: 5,
@@ -119,7 +131,17 @@ exports.WelcomePage = function (_a) {
                             width: '100%'
                         } })));
             })),
-            react_1["default"].createElement(material_1.Button, { variant: "contained", onClick: handleStart, disabled: !selectedDifficulty, sx: {
+            react_1["default"].createElement(material_1.Button, { component: "button", variant: "contained", onClick: function (e) {
+                    e.stopPropagation();
+                    console.log('Button clicked - event handler');
+                    handleStart();
+                }, onMouseDown: function (e) {
+                    console.log('Button mouse down');
+                    e.stopPropagation();
+                }, onMouseUp: function (e) {
+                    console.log('Button mouse up');
+                    e.stopPropagation();
+                }, disabled: !selectedDifficulty, sx: {
                     minWidth: 200,
                     height: 48,
                     background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
@@ -128,13 +150,17 @@ exports.WelcomePage = function (_a) {
                     fontWeight: 600,
                     letterSpacing: 1,
                     border: 0,
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    position: 'relative',
                     '&:hover': {
                         background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
                         boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)'
                     },
                     '&.Mui-disabled': {
                         background: 'rgba(255, 255, 255, 0.1)',
-                        boxShadow: 'none'
+                        boxShadow: 'none',
+                        cursor: 'not-allowed'
                     }
                 } }, "START GAME"))));
 };

@@ -277,31 +277,170 @@ exports.GameScreen = function (_a) {
         return (react_1["default"].createElement(material_1.Box, { display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" },
             react_1["default"].createElement(material_1.CircularProgress, null)));
     }
-    return (react_1["default"].createElement(material_1.Container, { maxWidth: "lg" },
-        react_1["default"].createElement(material_1.Paper, { sx: { p: 4, mt: 4, backgroundColor: 'rgba(0, 0, 0, 0.8)', color: 'white' } },
-            react_1["default"].createElement(material_1.Box, { sx: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 } },
-                react_1["default"].createElement(material_1.Typography, { variant: "h4" }, "Predict the Future Price"),
-                react_1["default"].createElement(material_1.Button, { variant: "outlined", color: "primary", onClick: onGameEnd }, "Back to Menu")),
-            react_1["default"].createElement(material_1.Typography, { variant: "body1", paragraph: true },
-                "Difficulty: ",
-                difficulty,
-                " | Attempt: ",
-                attempt,
-                "/5"),
-            react_1["default"].createElement(material_1.Box, { sx: { mb: 2 } },
-                react_1["default"].createElement(material_1.Typography, { variant: "body1" },
-                    "Score: Correct: ",
-                    score.right,
-                    " | Wrong: ",
-                    score.wrong)),
-            react_1["default"].createElement(material_1.Box, { sx: { mb: 4 } },
+    return (react_1["default"].createElement(material_1.Container, { maxWidth: false, sx: {
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)',
+            padding: '2rem',
+            display: 'flex',
+            alignItems: 'center'
+        } },
+        react_1["default"].createElement(material_1.Paper, { sx: {
+                width: '100%',
+                background: 'rgba(16, 20, 24, 0.8)',
+                backdropFilter: 'blur(20px)',
+                color: 'white',
+                borderRadius: 4,
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                position: 'relative',
+                overflow: 'hidden',
+                p: 4,
+                '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 4,
+                    padding: '2px',
+                    background: 'linear-gradient(60deg, #00F5A0, #00D9F5)',
+                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                    WebkitMaskComposite: 'xor',
+                    maskComposite: 'exclude'
+                }
+            } },
+            react_1["default"].createElement(material_1.Box, { sx: {
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 4,
+                    position: 'relative',
+                    zIndex: 1
+                } },
+                react_1["default"].createElement(material_1.Typography, { variant: "h4", sx: {
+                        fontWeight: 700,
+                        letterSpacing: 2,
+                        textShadow: '0 0 20px rgba(0, 245, 160, 0.5)'
+                    } }, "Predict the Future Price"),
+                react_1["default"].createElement(material_1.Button, { variant: "outlined", onClick: onGameEnd, sx: {
+                        borderColor: 'rgba(0, 245, 160, 0.5)',
+                        color: '#00F5A0',
+                        '&:hover': {
+                            borderColor: '#00F5A0',
+                            backgroundColor: 'rgba(0, 245, 160, 0.1)'
+                        }
+                    } }, "Back to Menu")),
+            react_1["default"].createElement(material_1.Box, { sx: {
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    mb: 4,
+                    position: 'relative',
+                    zIndex: 1
+                } },
+                react_1["default"].createElement(material_1.Typography, { variant: "h6", sx: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontWeight: 500
+                    } },
+                    "Difficulty: ",
+                    react_1["default"].createElement("span", { style: { color: '#00F5A0' } }, difficulty),
+                    " | Attempt: ",
+                    react_1["default"].createElement("span", { style: { color: '#00F5A0' } },
+                        attempt,
+                        "/5")),
+                react_1["default"].createElement(material_1.Typography, { variant: "h6", sx: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontWeight: 500
+                    } },
+                    "Score: ",
+                    react_1["default"].createElement("span", { style: { color: '#00F5A0' } },
+                        "Correct: ",
+                        score.right),
+                    " |",
+                    react_1["default"].createElement("span", { style: { color: '#ef5350' } },
+                        " Wrong: ",
+                        score.wrong))),
+            react_1["default"].createElement(material_1.Box, { sx: {
+                    mb: 4,
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: 2,
+                    p: 2,
+                    position: 'relative',
+                    zIndex: 1
+                } },
                 react_1["default"].createElement(ChartComponent_1.ChartComponent, { data: historicalData, defaultInterval: "1D" })),
-            react_1["default"].createElement(material_1.Box, { sx: { mb: 4 } },
-                react_1["default"].createElement(material_1.Typography, { variant: "h6", gutterBottom: true }, "What do you think the future closing price will be?"),
-                react_1["default"].createElement(material_1.RadioGroup, { value: selectedChoice, onChange: function (e) { return setSelectedChoice(e.target.value); } }, priceChoices.map(function (choice) { return (react_1["default"].createElement(material_1.FormControlLabel, { key: choice, value: choice, control: react_1["default"].createElement(material_1.Radio, null), label: choice })); }))),
+            react_1["default"].createElement(material_1.Box, { sx: {
+                    mb: 4,
+                    position: 'relative',
+                    zIndex: 1
+                } },
+                react_1["default"].createElement(material_1.Typography, { variant: "h6", gutterBottom: true, sx: {
+                        color: '#00F5A0',
+                        fontWeight: 500,
+                        letterSpacing: 1,
+                        mb: 3
+                    } }, "What do you think the future closing price will be?"),
+                react_1["default"].createElement(material_1.RadioGroup, { value: selectedChoice, onChange: function (e) { return setSelectedChoice(e.target.value); }, sx: {
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: 2
+                    } }, priceChoices.map(function (choice) { return (react_1["default"].createElement(material_1.FormControlLabel, { key: choice, value: choice, control: react_1["default"].createElement(material_1.Radio, { sx: {
+                            color: 'rgba(255, 255, 255, 0.3)',
+                            '&.Mui-checked': {
+                                color: '#00F5A0'
+                            }
+                        } }), label: choice, sx: {
+                        margin: 0,
+                        padding: 2,
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: selectedChoice === choice ?
+                            'rgba(0, 245, 160, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                        backgroundColor: selectedChoice === choice ?
+                            'rgba(0, 245, 160, 0.1)' : 'transparent',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                            backgroundColor: 'rgba(0, 245, 160, 0.05)'
+                        }
+                    } })); }))),
             showResult ? (react_1["default"].createElement(react_1["default"].Fragment, null,
-                react_1["default"].createElement(material_1.Typography, { variant: "h6", color: selectedChoice === correctPrice ? 'success.main' : 'error.main' }, selectedChoice === correctPrice
-                    ? 'Correct! Well done!'
-                    : "Wrong! The correct price was " + correctPrice),
-                react_1["default"].createElement(material_1.Button, { variant: "contained", color: "primary", onClick: handleNext, size: "large", sx: { mt: 2 } }, attempt >= 5 ? 'See Results' : 'Next Round'))) : (react_1["default"].createElement(material_1.Button, { variant: "contained", color: "primary", onClick: handleSubmit, size: "large", disabled: !selectedChoice }, "Submit Prediction")))));
+                react_1["default"].createElement(material_1.Typography, { variant: "h6", sx: {
+                        color: selectedChoice === correctPrice ? '#00F5A0' : '#ef5350',
+                        textAlign: 'center',
+                        mb: 3
+                    } }, selectedChoice === correctPrice
+                    ? '🎯 Correct! Well done!'
+                    : "\u274C Wrong! The correct price was " + correctPrice),
+                react_1["default"].createElement(material_1.Button, { variant: "contained", onClick: handleNext, size: "large", sx: {
+                        display: 'block',
+                        margin: '0 auto',
+                        minWidth: 200,
+                        height: 48,
+                        background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
+                        boxShadow: '0 3px 16px rgba(0, 245, 160, 0.3)',
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        letterSpacing: 1,
+                        border: 0,
+                        '&:hover': {
+                            background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
+                            boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)'
+                        }
+                    } }, attempt >= 5 ? 'See Results' : 'Next Round'))) : (react_1["default"].createElement(material_1.Button, { variant: "contained", onClick: handleSubmit, size: "large", disabled: !selectedChoice, sx: {
+                    display: 'block',
+                    margin: '0 auto',
+                    minWidth: 200,
+                    height: 48,
+                    background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
+                    boxShadow: '0 3px 16px rgba(0, 245, 160, 0.3)',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    letterSpacing: 1,
+                    border: 0,
+                    '&:hover': {
+                        background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
+                        boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)'
+                    },
+                    '&.Mui-disabled': {
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        boxShadow: 'none'
+                    }
+                } }, "Submit Prediction")))));
 };

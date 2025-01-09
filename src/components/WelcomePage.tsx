@@ -6,7 +6,7 @@
  * Features a modern glass morphism design with neon accents.
  *********************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -31,12 +31,26 @@ const difficultyDescriptions: { [key: string]: string } = {
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
 
+  // Track component mounting
+  useEffect(() => {
+    console.log('WelcomePage mounted');
+  }, []);
+
+  // Track difficulty changes
+  useEffect(() => {
+    console.log('Difficulty changed to:', selectedDifficulty);
+  }, [selectedDifficulty]);
+
   const handleDifficultyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('Difficulty change event:', event.target.value);
     setSelectedDifficulty(event.target.value);
   };
 
   const handleStart = () => {
+    console.log('Start button clicked');
+    console.log('Selected difficulty:', selectedDifficulty);
     if (selectedDifficulty) {
+      console.log('Calling onStartGame with difficulty:', selectedDifficulty);
       onStartGame(selectedDifficulty);
     }
   };
@@ -55,6 +69,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
     >
       <Paper 
         elevation={24}
+        onClick={() => console.log('Paper clicked')}
         sx={{ 
           width: '100%',
           maxWidth: 500,
@@ -196,8 +211,21 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
         </RadioGroup>
 
         <Button
+          component="button"
           variant="contained"
-          onClick={handleStart}
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('Button clicked - event handler');
+            handleStart();
+          }}
+          onMouseDown={(e) => {
+            console.log('Button mouse down');
+            e.stopPropagation();
+          }}
+          onMouseUp={(e) => {
+            console.log('Button mouse up');
+            e.stopPropagation();
+          }}
           disabled={!selectedDifficulty}
           sx={{ 
             minWidth: 200,
@@ -208,6 +236,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             fontWeight: 600,
             letterSpacing: 1,
             border: 0,
+            cursor: 'pointer',
+            zIndex: 10,
+            position: 'relative',
             '&:hover': {
               background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
               boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',
@@ -215,6 +246,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             '&.Mui-disabled': {
               background: 'rgba(255, 255, 255, 0.1)',
               boxShadow: 'none',
+              cursor: 'not-allowed',
             }
           }}
         >
