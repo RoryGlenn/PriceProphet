@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { createChart, Time } from 'lightweight-charts';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { createChart, Time, IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
 import { Box, ToggleButton, ToggleButtonGroup, Theme } from '@mui/material';
 import { OhlcBar } from '../types';
 import { DateTime } from 'luxon';
@@ -45,19 +45,24 @@ const chartContainerStyles: SxProps<Theme> = {
 
 export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInterval = 'D' }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | undefined>();
+  const seriesRef = useRef<ISeriesApi<'Candlestick'> | undefined>();
   const [interval, setInterval] = useState(defaultInterval);
+  const previousDataRef = useRef<string>('');
 
-  const handleIntervalChange = (_event: React.MouseEvent<HTMLElement>, newInterval: string) => {
-    if (newInterval !== null) {
-      setInterval(newInterval);
-    }
-  };
+  // Memoize the processed data to prevent unnecessary recalculations
+  const processedData = useMemo(() => {
+    if (!data[interval]?.length) return [];
+    return data[interval] as CandlestickData[];
+  }, [data, interval]);
 
+  // Create chart instance only once
   useEffect(() => {
-    if (!chartContainerRef.current || !data[interval]?.length) return;
+    if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
+    const container = chartContainerRef.current;
+    const chart = createChart(container, {
+      width: container.clientWidth,
       height: 400,
       layout: {
         background: { color: 'transparent' },
@@ -80,45 +85,19 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
         },
       },
       timeScale: {
-        timeVisible: interval.endsWith('m') || interval.endsWith('h'),
+        timeVisible: false,
         secondsVisible: false,
         borderColor: 'rgba(43, 43, 67, 0.5)',
         fixLeftEdge: true,
         fixRightEdge: true,
         rightOffset: 12,
-        barSpacing: interval.endsWith('m') ? 3 : 6,
+        barSpacing: 6,
         minBarSpacing: 2,
-        tickMarkFormatter: (time: Time) => {
-          const date = typeof time === 'number' 
-            ? DateTime.fromSeconds(time) 
-            : DateTime.fromFormat(time as string, 'yyyy-MM-dd');
-          
-          // For minute intervals, show date and time
-          if (interval.endsWith('m')) {
-            return date.toFormat('MMM dd HH:mm');
-          }
-          // For hour intervals, show date and hour
-          if (interval.endsWith('h')) {
-            return date.toFormat('MMM dd HH:00');
-          }
-          // For daily intervals
-          if (interval === 'D') {
-            return date.toFormat('MMM dd');
-          }
-          // For weekly intervals
-          if (interval === 'W') {
-            return date.toFormat('MMM dd');
-          }
-          // For monthly intervals
-          if (interval === 'M') {
-            return date.toFormat('MMM yyyy');
-          }
-          return date.toFormat('MMM dd');
-        },
       },
     });
 
-    const candlestickSeries = chart.addCandlestickSeries({
+    chartRef.current = chart;
+    seriesRef.current = chart.addCandlestickSeries({
       upColor: '#00F5A0',
       downColor: '#ef5350',
       borderVisible: false,
@@ -126,20 +105,53 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
       wickDownColor: '#ef5350',
     });
 
-    // Add tooltip formatter for consistent date display
+    const handleResize = () => {
+      if (chart && container) {
+        chart.applyOptions({
+          width: container.clientWidth,
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, []);
+
+  // Update chart options when interval changes
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const getBarSpacing = (): number => {
+      switch (interval) {
+        case 'M': return 12;
+        case 'W': return 10;
+        case '1m':
+        case '5m':
+        case '15m': return 3;
+        default: return 6;
+      }
+    };
+
     chart.applyOptions({
-      localization: {
-        timeFormatter: (time: Time) => {
+      timeScale: {
+        timeVisible: interval.endsWith('m') || interval.endsWith('h'),
+        barSpacing: getBarSpacing(),
+        tickMarkFormatter: (time: Time) => {
           const date = typeof time === 'number' 
             ? DateTime.fromSeconds(time) 
             : DateTime.fromFormat(time as string, 'yyyy-MM-dd');
           
-          // Use same format as x-axis labels
+          // Simplified date formats to reduce clutter
           if (interval.endsWith('m')) {
-            return date.toFormat('MMM dd HH:mm');
+            return date.toFormat('HH:mm');
           }
           if (interval.endsWith('h')) {
-            return date.toFormat('MMM dd HH:00');
+            return date.toFormat('HH:00');
           }
           if (interval === 'D') {
             return date.toFormat('MMM dd');
@@ -152,58 +164,73 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
           }
           return date.toFormat('MMM dd');
         },
+        fixLeftEdge: true,
+        fixRightEdge: true,
+        rightOffset: 12,
+        minBarSpacing: 2,
+      },
+      localization: {
+        timeFormatter: (time: Time) => {
+          const date = typeof time === 'number' 
+            ? DateTime.fromSeconds(time) 
+            : DateTime.fromFormat(time as string, 'yyyy-MM-dd');
+          
+          // Keep detailed format for tooltips
+          if (interval.endsWith('m')) {
+            return date.toFormat('MMM dd HH:mm');
+          }
+          if (interval.endsWith('h')) {
+            return date.toFormat('MMM dd HH:00');
+          }
+          if (interval === 'D') {
+            return date.toFormat('MMM dd yyyy');
+          }
+          if (interval === 'W') {
+            return date.toFormat('MMM dd yyyy');
+          }
+          if (interval === 'M') {
+            return date.toFormat('MMM yyyy');
+          }
+          return date.toFormat('MMM dd yyyy');
+        },
       },
     });
+  }, [interval]);
 
-    let timeoutId: NodeJS.Timeout | null = null;
+  // Update data when interval or data changes
+  useEffect(() => {
+    const series = seriesRef.current;
+    const chart = chartRef.current;
+    if (!series || !chart || !processedData.length) return;
 
-    const setDataInChunks = (chartData: OhlcBar[]) => {
-      const CHUNK_SIZE = 5000;
-      let currentIndex = 0;
+    // Check if data has actually changed to prevent unnecessary updates
+    const currentDataString = JSON.stringify(processedData);
+    if (currentDataString === previousDataRef.current) return;
+    previousDataRef.current = currentDataString;
 
-      const processNextChunk = () => {
-        const chunk = chartData.slice(currentIndex, currentIndex + CHUNK_SIZE);
-        if (chunk.length > 0) {
-          if (currentIndex === 0) {
-            candlestickSeries.setData(chunk);
-          } else {
-            chunk.forEach(bar => candlestickSeries.update(bar));
-          }
-          currentIndex += CHUNK_SIZE;
-          if (currentIndex < chartData.length) {
-            timeoutId = setTimeout(processNextChunk, 0);
-          } else {
+    // Batch the updates for better performance
+    requestAnimationFrame(() => {
+      if (series) {
+        series.setData(processedData);
+        
+        // Fit content in the next frame for smoother rendering
+        requestAnimationFrame(() => {
+          if (chart) {
             chart.timeScale().fitContent();
           }
-        }
-      };
-
-      processNextChunk();
-    };
-
-    if (interval.endsWith('m') && data[interval].length > 5000) {
-      setDataInChunks(data[interval]);
-    } else {
-      candlestickSeries.setData(data[interval]);
-      chart.timeScale().fitContent();
-    }
-
-    const handleResize = () => {
-      chart.applyOptions({
-        width: chartContainerRef.current!.clientWidth,
-      });
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+        });
       }
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
-  }, [data, interval]);
+    });
+  }, [processedData]);
+
+  const handleIntervalChange = (_event: React.MouseEvent<HTMLElement>, newInterval: string | null) => {
+    if (newInterval !== null) {
+      // Pre-process data before setting new interval for smoother transition
+      if (data[newInterval]?.length) {
+        setInterval(newInterval);
+      }
+    }
+  };
 
   return (
     <Box>
