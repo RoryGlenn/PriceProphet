@@ -14,7 +14,21 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.generatePriceChoices = void 0;
+exports.generatePriceChoices = exports.formatPrice = void 0;
+/**
+ * Format a number as a currency string with consistent formatting.
+ * @param price The price to format
+ * @returns Formatted price string
+ */
+function formatPrice(price) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(price);
+}
+exports.formatPrice = formatPrice;
 /**
  * Generate an array of price choices for the prediction game.
  * Creates four price options:
@@ -30,8 +44,8 @@ exports.generatePriceChoices = void 0;
  */
 function generatePriceChoices(actualPrice) {
     var _a;
-    // Format the actual price to 2 decimal places
-    var formattedActual = actualPrice.toFixed(2);
+    // Format the actual price
+    var formattedActual = formatPrice(actualPrice);
     /*
      * Generate three alternative prices by applying random percentage changes.
      * We use different ranges for up and down movements to create realistic
@@ -51,7 +65,7 @@ function generatePriceChoices(actualPrice) {
         var multiplier = isHigher
             ? 1 + percentChange / 100
             : 1 - percentChange / 100;
-        var altPrice = (actualPrice * multiplier).toFixed(2);
+        var altPrice = formatPrice(actualPrice * multiplier);
         alternatives.push(altPrice);
     }
     // Combine actual and alternative prices

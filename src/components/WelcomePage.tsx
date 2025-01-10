@@ -1,6 +1,6 @@
 /*********************************************************************
  * WelcomePage.tsx
- * 
+ *
  * Welcome screen component that introduces the game and allows
  * players to select their difficulty level before starting.
  * Features a modern glass morphism design with neon accents.
@@ -17,17 +17,32 @@ import {
   RadioGroup,
   FormControlLabel,
 } from '@mui/material';
+import { DifficultyLevel } from '../types';
 
+/**
+ * Props for the WelcomePage component
+ */
 interface WelcomePageProps {
+  /** Callback function called when the user starts the game */
   onStartGame: (difficulty: string) => void;
 }
 
+/**
+ * Descriptions for each difficulty level
+ */
 const difficultyDescriptions: { [key: string]: string } = {
   Easy: 'Predict the price 1 day into the future',
   Medium: 'Predict the price 1 week into the future',
   Hard: 'Predict the price 1 month into the future',
 };
 
+/**
+ * Welcome page component that displays game introduction and difficulty selection.
+ * Features a modern glass morphism design with neon accents.
+ *
+ * @param props - Component props
+ * @param props.onStartGame - Callback function called when the user starts the game
+ */
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('Easy');
 
@@ -47,9 +62,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
   };
 
   return (
-    <Container 
+    <Container
       maxWidth={false}
-      sx={{ 
+      sx={{
         height: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -58,9 +73,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
         padding: 0,
       }}
     >
-      <Paper 
+      <Paper
         elevation={24}
-        sx={{ 
+        sx={{
           width: '100%',
           maxWidth: 500,
           p: 5,
@@ -83,13 +98,13 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
             WebkitMaskComposite: 'xor',
             maskComposite: 'exclude',
-          }
+          },
         }}
       >
-        <Typography 
-          variant="h3" 
-          component="h1" 
-          sx={{ 
+        <Typography
+          variant="h3"
+          component="h1"
+          sx={{
             fontWeight: 700,
             letterSpacing: 2,
             textShadow: '0 0 20px rgba(0, 245, 160, 0.5)',
@@ -99,9 +114,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           Price Prophet
         </Typography>
 
-        <Typography 
-          variant="h6" 
-          sx={{ 
+        <Typography
+          variant="h6"
+          sx={{
             color: '#00F5A0',
             fontWeight: 500,
             letterSpacing: 1,
@@ -111,9 +126,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           Test your price prediction skills!
         </Typography>
 
-        <Typography 
-          variant="body1" 
-          sx={{ 
+        <Typography
+          variant="body1"
+          sx={{
             mb: 5,
             color: 'rgba(255, 255, 255, 0.7)',
             fontSize: '1rem',
@@ -121,15 +136,11 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             margin: '0 auto 40px',
           }}
         >
-          Analyze historical price charts and predict future price movements.
-          Choose your difficulty level to begin.
+          Analyze historical price charts and predict future price movements. Choose your difficulty
+          level to begin.
         </Typography>
 
-        <RadioGroup 
-          value={selectedDifficulty} 
-          onChange={handleDifficultyChange}
-          sx={{ mb: 5 }}
-        >
+        <RadioGroup value={selectedDifficulty} onChange={handleDifficultyChange} sx={{ mb: 5 }}>
           {Object.entries(difficultyDescriptions).map(([difficulty, description]) => (
             <Box
               key={difficulty}
@@ -143,7 +154,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
               <FormControlLabel
                 value={difficulty}
                 control={
-                  <Radio 
+                  <Radio
                     sx={{
                       color: 'rgba(255, 255, 255, 0.3)',
                       '&.Mui-checked': {
@@ -156,34 +167,37 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
                   />
                 }
                 label={
-                  <Box 
-                    sx={{ 
+                  <Box
+                    sx={{
                       textAlign: 'center',
                       padding: '12px 24px',
                       borderRadius: 2,
                       transition: 'all 0.3s ease',
-                      background: selectedDifficulty === difficulty ? 
-                        'rgba(0, 245, 160, 0.1)' : 'transparent',
+                      background:
+                        selectedDifficulty === difficulty
+                          ? 'rgba(0, 245, 160, 0.1)'
+                          : 'transparent',
                       border: '1px solid',
-                      borderColor: selectedDifficulty === difficulty ? 
-                        'rgba(0, 245, 160, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                      borderColor:
+                        selectedDifficulty === difficulty
+                          ? 'rgba(0, 245, 160, 0.3)'
+                          : 'rgba(255, 255, 255, 0.1)',
                       width: '100%',
                     }}
                   >
-                    <Typography 
+                    <Typography
                       variant="h6"
-                      sx={{ 
-                        color: selectedDifficulty === difficulty ? 
-                          '#00F5A0' : '#FFFFFF',
+                      sx={{
+                        color: selectedDifficulty === difficulty ? '#00F5A0' : '#FFFFFF',
                         fontWeight: 500,
                         transition: 'color 0.3s ease',
                       }}
                     >
                       {difficulty}
                     </Typography>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
+                    <Typography
+                      variant="body2"
+                      sx={{
                         color: 'rgba(255, 255, 255, 0.6)',
                       }}
                     >
@@ -204,7 +218,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           component="button"
           variant="contained"
           onClick={handleStartGame}
-          sx={{ 
+          sx={{
             minWidth: 200,
             height: 48,
             background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
@@ -224,7 +238,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
               background: 'rgba(255, 255, 255, 0.1)',
               boxShadow: 'none',
               cursor: 'not-allowed',
-            }
+            },
           }}
         >
           START GAME

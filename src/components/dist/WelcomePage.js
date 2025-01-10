@@ -10,11 +10,21 @@ exports.__esModule = true;
 exports.WelcomePage = void 0;
 var react_1 = require("react");
 var material_1 = require("@mui/material");
+/**
+ * Descriptions for each difficulty level
+ */
 var difficultyDescriptions = {
     Easy: 'Predict the price 1 day into the future',
     Medium: 'Predict the price 1 week into the future',
     Hard: 'Predict the price 1 month into the future'
 };
+/**
+ * Welcome page component that displays game introduction and difficulty selection.
+ * Features a modern glass morphism design with neon accents.
+ *
+ * @param props - Component props
+ * @param props.onStartGame - Callback function called when the user starts the game
+ */
 exports.WelcomePage = function (_a) {
     var onStartGame = _a.onStartGame;
     var _b = react_1.useState('Easy'), selectedDifficulty = _b[0], setSelectedDifficulty = _b[1];

@@ -1,19 +1,12 @@
 /*********************************************************************
  * ResultsPage.tsx
- * 
- * Results screen component that shows the final score and statistics
- * after completing the game. Features a modern glass morphism design
- * with neon accents matching the game's aesthetic.
+ *
+ * Game results display component that shows the player's performance.
+ * Features score summary, accuracy metrics, and performance visualization.
  *********************************************************************/
 
-import React, { useEffect } from 'react';
-import {
-  Container,
-  Paper,
-  Typography,
-  Button,
-  Box,
-} from '@mui/material';
+import React from 'react';
+import { Container, Paper, Typography, Button, Box } from '@mui/material';
 
 interface ResultsPageProps {
   score: {
@@ -25,71 +18,47 @@ interface ResultsPageProps {
   onBackToMenu: () => void;
 }
 
+/**
+ * Displays the final game results and provides option to return to welcome screen.
+ * Shows score breakdown and calculates accuracy percentage.
+ *
+ * @param props Component props
+ */
 export const ResultsPage: React.FC<ResultsPageProps> = ({
   score,
   difficulty,
   onPlayAgain,
   onBackToMenu,
 }) => {
-  // Add logging on mount
-  useEffect(() => {
-    // Component initialization
-  }, []);
-
-  const handlePlayAgain = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    try {
-      onPlayAgain();
-    } catch (error) {
-      console.error('Error in Play Again handler:', error);
-    }
+  const calculateAccuracy = () => {
+    const total = score.right + score.wrong;
+    if (total === 0) return 0;
+    return Math.round((score.right / total) * 100);
   };
-
-  const handleBackToMenu = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    try {
-      onBackToMenu();
-    } catch (error) {
-      console.error('Error in Back to Menu handler:', error);
-    }
-  };
-
-  const getGrade = (accuracy: number): string => {
-    if (accuracy >= 90) return 'A';
-    if (accuracy >= 80) return 'B';
-    if (accuracy >= 70) return 'C';
-    if (accuracy >= 60) return 'D';
-    return 'F';
-  };
-
-  const accuracy = (score.right / (score.right + score.wrong)) * 100 || 0;
-  const grade = getGrade(accuracy);
 
   return (
-    <Container 
-      maxWidth={false} 
-      sx={{ 
-        height: '100vh', 
-        display: 'flex', 
-        alignItems: 'center',
-        justifyContent: 'center',
+    <Container
+      maxWidth={false}
+      sx={{
+        minHeight: '100vh',
         background: 'linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)',
-        padding: 0,
+        padding: '2rem',
+        display: 'flex',
+        alignItems: 'center',
       }}
     >
-      <Paper 
-        elevation={24}
-        sx={{ 
+      <Paper
+        sx={{
           width: '100%',
-          maxWidth: 500,
-          p: 5, 
+          maxWidth: '800px',
+          margin: '0 auto',
           background: 'rgba(16, 20, 24, 0.8)',
           backdropFilter: 'blur(20px)',
           color: 'white',
-          textAlign: 'center',
           borderRadius: 4,
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+          padding: '2rem',
           position: 'relative',
           overflow: 'hidden',
           '&::after': {
@@ -105,114 +74,56 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           },
         }}
       >
-        <Typography 
-          variant="h3" 
-          component="h1" 
-          sx={{ 
-            fontWeight: 700,
-            letterSpacing: 2,
-            textShadow: '0 0 20px rgba(0, 245, 160, 0.5)',
-            mb: 4,
-          }}
-        >
-          Game Results
-        </Typography>
-
-        <Box sx={{ mb: 5 }}>
-          <Typography 
-            variant="h1" 
-            sx={{ 
-              fontSize: '8rem',
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              textAlign: 'center',
+              marginBottom: '2rem',
               fontWeight: 700,
-              color: grade === 'F' ? '#ef5350' : '#00F5A0',
-              textShadow: `0 0 30px ${grade === 'F' ? 'rgba(239, 83, 80, 0.5)' : 'rgba(0, 245, 160, 0.5)'}`,
-              mb: 2,
+              letterSpacing: 2,
+              textShadow: '0 0 20px rgba(0, 245, 160, 0.5)',
             }}
           >
-            {grade}
-          </Typography>
-          
-          <Typography 
-            variant="h5"
-            sx={{ 
-              color: 'rgba(255, 255, 255, 0.7)',
-              mb: 1,
-            }}
-          >
-            Difficulty: <span style={{ color: '#00F5A0' }}>{difficulty}</span>
+            Game Results
           </Typography>
 
-          <Typography 
-            variant="h5"
-            sx={{ 
-              color: 'rgba(255, 255, 255, 0.7)',
-              mb: 3,
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '2rem',
+              marginBottom: '2rem',
             }}
           >
-            Accuracy: <span style={{ color: '#00F5A0' }}>{accuracy.toFixed(1)}%</span>
-          </Typography>
-
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            gap: 4,
-            mb: 2,
-          }}>
-            <Typography variant="h6" sx={{ color: '#00F5A0' }}>
+            <Typography variant="h5" sx={{ color: '#00F5A0' }}>
               Correct: {score.right}
             </Typography>
-            <Typography variant="h6" sx={{ color: '#ef5350' }}>
+            <Typography variant="h5" sx={{ color: '#ef5350' }}>
               Wrong: {score.wrong}
             </Typography>
+            <Typography variant="h5" sx={{ color: '#00D9F5' }}>
+              Accuracy: {calculateAccuracy()}%
+            </Typography>
           </Box>
-        </Box>
 
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 2,
-          justifyContent: 'center',
-          position: 'relative',
-          zIndex: 10
-        }}>
           <Button
             variant="contained"
-            onClick={handlePlayAgain}
+            onClick={onBackToMenu}
+            size="large"
             sx={{
-              minWidth: 140,
+              display: 'block',
+              margin: '0 auto',
+              minWidth: 200,
               height: 48,
               background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
               boxShadow: '0 3px 16px rgba(0, 245, 160, 0.3)',
               fontSize: '1rem',
               fontWeight: 600,
               letterSpacing: 1,
-              border: 0,
-              position: 'relative',
-              zIndex: 20,
               '&:hover': {
                 background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
                 boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',
-              },
-            }}
-          >
-            Play Again
-          </Button>
-
-          <Button
-            variant="outlined"
-            onClick={handleBackToMenu}
-            sx={{
-              minWidth: 140,
-              height: 48,
-              borderColor: 'rgba(0, 245, 160, 0.5)',
-              color: '#00F5A0',
-              fontSize: '1rem',
-              fontWeight: 600,
-              letterSpacing: 1,
-              position: 'relative',
-              zIndex: 20,
-              '&:hover': {
-                borderColor: '#00F5A0',
-                backgroundColor: 'rgba(0, 245, 160, 0.1)',
               },
             }}
           >
@@ -222,4 +133,4 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
       </Paper>
     </Container>
   );
-}; 
+};

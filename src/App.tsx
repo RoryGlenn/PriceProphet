@@ -1,6 +1,6 @@
 /*********************************************************************
  * App.tsx
- * 
+ *
  * Main application component that handles game state and navigation.
  * Manages the flow between welcome screen and game screen, including
  * difficulty selection and game session management.
@@ -22,8 +22,6 @@ export const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('welcome');
   const [difficulty, setDifficulty] = useState<string>('');
   const [score, setScore] = useState<GameScore>({ right: 0, wrong: 0 });
-
-
 
   const handleStartGame = (selectedDifficulty: string) => {
     setDifficulty(selectedDifficulty);
@@ -51,15 +49,10 @@ export const App: React.FC = () => {
 
   switch (gameState) {
     case 'playing':
-      return (
-        <GameScreen 
-          difficulty={difficulty} 
-          onGameEnd={handleGameEnd}
-        />
-      );
+      return <GameScreen difficulty={difficulty} onGameEnd={handleGameEnd} />;
     case 'results':
       return (
-        <ResultsPage 
+        <ResultsPage
           score={score}
           difficulty={difficulty}
           onPlayAgain={handlePlayAgain}

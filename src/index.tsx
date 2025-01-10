@@ -1,6 +1,6 @@
 /*********************************************************************
  * index.tsx
- * 
+ *
  * Application entry point that sets up the React root and renders
  * the main App component. Configures global styles and ensures
  * proper initialization of the application.
@@ -26,7 +26,7 @@ const root = createRoot(rootElement);
  * Render the application with:
  * 1. CssBaseline for consistent base styles
  * 2. Main App component
- * 
+ *
  * Using React.StrictMode to:
  * - Highlight potential problems
  * - Detect unsafe lifecycles

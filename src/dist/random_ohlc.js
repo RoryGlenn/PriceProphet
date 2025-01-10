@@ -95,7 +95,7 @@ var RandomOHLC = /** @class */ (function () {
                 dates.push(date);
             }
         }
-        console.info("Date range: " + dates[0].toISO() + " to " + dates[dates.length - 1].toISO());
+        // console.info(`Date range: ${dates[0].toISO()} to ${dates[dates.length - 1].toISO()}`);
         return dates;
     };
     /**
@@ -255,7 +255,7 @@ var RandomOHLC = /** @class */ (function () {
                 timestamp: data[0].timestamp
             });
         });
-        console.log('First open prices:', openValues);
+        // console.log('First open prices:', openValues);
         var firstOpen = (_a = openValues[0]) === null || _a === void 0 ? void 0 : _a.open;
         var mismatchedIntervals = openValues.filter(function (item) { return Math.abs((item.open - firstOpen) / firstOpen) > 0.0001; });
         if (mismatchedIntervals.length > 0) {

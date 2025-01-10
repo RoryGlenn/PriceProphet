@@ -131,7 +131,6 @@ export class RandomOHLC {
     }));
   }
 
-
   /**
    * Calculate per-minute volatility and drift from annual values.
    * Converts annual parameters to per-minute values for GBM simulation.
@@ -271,15 +270,16 @@ export class RandomOHLC {
     }
 
     // Define the chunk size for each interval
-    const minutesPerChunk = {
-      '5m': 5,
-      '15m': 15,
-      '1h': 60,
-      '4h': 240,
-      'D': 1440,
-      'W': 1440 * 7,
-      'M': 1440 * 30
-    }[timeInterval] || 1;
+    const minutesPerChunk =
+      {
+        '5m': 5,
+        '15m': 15,
+        '1h': 60,
+        '4h': 240,
+        D: 1440,
+        W: 1440 * 7,
+        M: 1440 * 30,
+      }[timeInterval] || 1;
 
     // Group data into chunks
     const chunks: OhlcRow[][] = [];
@@ -288,15 +288,14 @@ export class RandomOHLC {
     }
 
     // Convert chunks to OHLC bars
-    return chunks.map(chunk => ({
+    return chunks.map((chunk) => ({
       timestamp: chunk[0].timestamp,
       open: chunk[0].open,
-      high: Math.max(...chunk.map(bar => bar.high)),
-      low: Math.min(...chunk.map(bar => bar.low)),
-      close: chunk[chunk.length - 1].close
+      high: Math.max(...chunk.map((bar) => bar.high)),
+      low: Math.min(...chunk.map((bar) => bar.low)),
+      close: chunk[chunk.length - 1].close,
     }));
   }
-
 
   /**
    * Validate that all intervals have the same final open price
@@ -307,14 +306,14 @@ export class RandomOHLC {
     const openValues = Object.entries(result).map(([interval, data]) => ({
       interval,
       open: data[0].open,
-      timestamp: data[0].timestamp
+      timestamp: data[0].timestamp,
     }));
 
-    console.log('First open prices:', openValues);
+    // console.log('First open prices:', openValues);
 
     const firstOpen = openValues[0]?.open;
     const mismatchedIntervals = openValues.filter(
-      item => Math.abs((item.open - firstOpen) / firstOpen) > 0.0001
+      (item) => Math.abs((item.open - firstOpen) / firstOpen) > 0.0001
     );
 
     if (mismatchedIntervals.length > 0) {

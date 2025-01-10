@@ -1,10 +1,35 @@
 "use strict";
+/*********************************************************************
+ * ChartComponent.tsx
+ *
+ * Interactive candlestick chart component using TradingView's lightweight-charts.
+ * Supports multiple timeframes, smooth data transitions, and responsive design.
+ *
+ * Features:
+ * - Multiple timeframe support (1m to Monthly)
+ * - Smooth data transitions with animation frames
+ * - Responsive design with automatic resizing
+ * - Custom date formatting for different intervals
+ * - Currency-formatted price axis
+ * - Memory-efficient data handling
+ *
+ * @module ChartComponent
+ * @requires lightweight-charts
+ * @requires @mui/material
+ * @requires luxon
+ *********************************************************************/
 exports.__esModule = true;
 exports.ChartComponent = void 0;
 var react_1 = require("react");
 var lightweight_charts_1 = require("lightweight-charts");
 var material_1 = require("@mui/material");
 var luxon_1 = require("luxon");
+/**
+ * Styles for the timeframe selection buttons.
+ * Implements a modern, glassy design with hover effects and selected states.
+ *
+ * @constant buttonGroupStyles
+ */
 var buttonGroupStyles = {
     mb: 2,
     display: 'flex',
@@ -27,6 +52,12 @@ var buttonGroupStyles = {
         }
     }
 };
+/**
+ * Styles for the chart container.
+ * Sets up responsive dimensions and border radius.
+ *
+ * @constant chartContainerStyles
+ */
 var chartContainerStyles = {
     width: '100%',
     height: '400px',
@@ -34,21 +65,60 @@ var chartContainerStyles = {
         borderRadius: '8px'
     }
 };
+/**
+ * Interactive candlestick chart component with multiple timeframe support.
+ * Features smooth data transitions, responsive design, and customizable appearance.
+ *
+ * @param props - Component props
+ * @param props.data - OHLC data organized by timeframe
+ * @param props.defaultInterval - Default selected timeframe
+ */
 exports.ChartComponent = function (_a) {
     var data = _a.data, _b = _a.defaultInterval, defaultInterval = _b === void 0 ? 'D' : _b;
     var chartContainerRef = react_1.useRef(null);
+    var chartRef = react_1.useRef();
+    var seriesRef = react_1.useRef();
     var _c = react_1.useState(defaultInterval), interval = _c[0], setInterval = _c[1];
-    var handleIntervalChange = function (_event, newInterval) {
-        if (newInterval !== null) {
-            setInterval(newInterval);
-        }
-    };
-    react_1.useEffect(function () {
+    var previousDataRef = react_1.useRef('');
+    /**
+     * Memoized data processing to prevent unnecessary recalculations.
+     * Converts raw data into the format required by the chart library.
+     *
+     * @returns Array of processed candlestick data ready for display
+     */
+    var processedData = react_1.useMemo(function () {
         var _a;
-        if (!chartContainerRef.current || !((_a = data[interval]) === null || _a === void 0 ? void 0 : _a.length))
+        if (!((_a = data[interval]) === null || _a === void 0 ? void 0 : _a.length))
+            return [];
+        return data[interval];
+    }, [data, interval]);
+    /**
+     * Calculates appropriate bar spacing based on the current timeframe.
+     * Ensures readable chart display for all intervals.
+     *
+     * @returns Number of pixels between bars
+     */
+    var getBarSpacing = react_1.useCallback(function () {
+        switch (interval) {
+            case 'M': return 12; // Monthly bars need more space
+            case 'W': return 10; // Weekly bars slightly less than monthly
+            case '1m':
+            case '5m':
+            case '15m': return 3; // Minute bars can be closer together
+            default: return 6; // Default spacing for other intervals
+        }
+    }, [interval]);
+    /**
+     * Creates and initializes the chart instance.
+     * Sets up chart options, series, and event listeners.
+     * Handles cleanup on component unmount.
+     */
+    react_1.useEffect(function () {
+        if (!chartContainerRef.current)
             return;
-        var chart = lightweight_charts_1.createChart(chartContainerRef.current, {
-            width: chartContainerRef.current.clientWidth,
+        var container = chartContainerRef.current;
+        var chart = lightweight_charts_1.createChart(container, {
+            width: container.clientWidth,
             height: 400,
             layout: {
                 background: { color: 'transparent' },
@@ -71,62 +141,63 @@ exports.ChartComponent = function (_a) {
                 }
             },
             timeScale: {
-                timeVisible: interval.endsWith('m') || interval.endsWith('h'),
+                timeVisible: false,
                 secondsVisible: false,
                 borderColor: 'rgba(43, 43, 67, 0.5)',
                 fixLeftEdge: true,
                 fixRightEdge: true,
                 rightOffset: 12,
-                barSpacing: interval.endsWith('m') ? 3 : 6,
-                minBarSpacing: 2,
-                tickMarkFormatter: function (time) {
-                    var date = typeof time === 'number'
-                        ? luxon_1.DateTime.fromSeconds(time)
-                        : luxon_1.DateTime.fromFormat(time, 'yyyy-MM-dd');
-                    // For minute intervals, show date and time
-                    if (interval.endsWith('m')) {
-                        return date.toFormat('MMM dd HH:mm');
-                    }
-                    // For hour intervals, show date and hour
-                    if (interval.endsWith('h')) {
-                        return date.toFormat('MMM dd HH:00');
-                    }
-                    // For daily intervals
-                    if (interval === 'D') {
-                        return date.toFormat('MMM dd');
-                    }
-                    // For weekly intervals
-                    if (interval === 'W') {
-                        return date.toFormat('MMM dd');
-                    }
-                    // For monthly intervals
-                    if (interval === 'M') {
-                        return date.toFormat('MMM yyyy');
-                    }
-                    return date.toFormat('MMM dd');
-                }
+                barSpacing: 6,
+                minBarSpacing: 2
             }
         });
-        var candlestickSeries = chart.addCandlestickSeries({
+        chartRef.current = chart;
+        seriesRef.current = chart.addCandlestickSeries({
             upColor: '#00F5A0',
             downColor: '#ef5350',
             borderVisible: false,
             wickUpColor: '#00F5A0',
             wickDownColor: '#ef5350'
         });
-        // Add tooltip formatter for consistent date display
+        /**
+         * Handles window resize events.
+         * Updates chart width to match container width.
+         */
+        var handleResize = function () {
+            if (chart && container) {
+                chart.applyOptions({
+                    width: container.clientWidth
+                });
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return function () {
+            window.removeEventListener('resize', handleResize);
+            chart.remove();
+        };
+    }, []);
+    /**
+     * Updates chart options when the timeframe interval changes.
+     * Configures time formatting, bar spacing, and axis display.
+     */
+    react_1.useEffect(function () {
+        var chart = chartRef.current;
+        if (!chart)
+            return;
         chart.applyOptions({
-            localization: {
-                timeFormatter: function (time) {
+            timeScale: {
+                timeVisible: interval.endsWith('m') || interval.endsWith('h'),
+                barSpacing: getBarSpacing(),
+                tickMarkFormatter: function (time) {
                     var date = typeof time === 'number'
                         ? luxon_1.DateTime.fromSeconds(time)
                         : luxon_1.DateTime.fromFormat(time, 'yyyy-MM-dd');
-                    // Use same format as x-axis labels
+                    // Simplified date formats to reduce clutter
                     if (interval.endsWith('m')) {
-                        return date.toFormat('MMM dd HH:mm');
+                        return date.toFormat('HH:mm');
                     }
                     if (interval.endsWith('h')) {
-                        return date.toFormat('MMM dd HH:00');
+                        return date.toFormat('HH:00');
                     }
                     if (interval === 'D') {
                         return date.toFormat('MMM dd');
@@ -138,50 +209,81 @@ exports.ChartComponent = function (_a) {
                         return date.toFormat('MMM yyyy');
                     }
                     return date.toFormat('MMM dd');
+                },
+                fixLeftEdge: true,
+                fixRightEdge: true,
+                rightOffset: 12,
+                minBarSpacing: 2
+            },
+            localization: {
+                timeFormatter: function (time) {
+                    var date = typeof time === 'number'
+                        ? luxon_1.DateTime.fromSeconds(time)
+                        : luxon_1.DateTime.fromFormat(time, 'yyyy-MM-dd');
+                    // Keep detailed format for tooltips
+                    if (interval.endsWith('m')) {
+                        return date.toFormat('MMM dd HH:mm');
+                    }
+                    if (interval.endsWith('h')) {
+                        return date.toFormat('MMM dd HH:00');
+                    }
+                    if (interval === 'D') {
+                        return date.toFormat('MMM dd yyyy');
+                    }
+                    if (interval === 'W') {
+                        return date.toFormat('MMM dd yyyy');
+                    }
+                    if (interval === 'M') {
+                        return date.toFormat('MMM yyyy');
+                    }
+                    return date.toFormat('MMM dd yyyy');
                 }
             }
         });
-        var setDataInChunks = function (chartData) {
-            var CHUNK_SIZE = 5000;
-            var currentIndex = 0;
-            var processNextChunk = function () {
-                var chunk = chartData.slice(currentIndex, currentIndex + CHUNK_SIZE);
-                if (chunk.length > 0) {
-                    if (currentIndex === 0) {
-                        candlestickSeries.setData(chunk);
-                    }
-                    else {
-                        chunk.forEach(function (bar) { return candlestickSeries.update(bar); });
-                    }
-                    currentIndex += CHUNK_SIZE;
-                    if (currentIndex < chartData.length) {
-                        setTimeout(processNextChunk, 0);
-                    }
-                    else {
+    }, [interval, getBarSpacing]);
+    /**
+     * Updates chart data when the processed data changes.
+     * Uses requestAnimationFrame for smooth updates and prevents unnecessary rerenders.
+     */
+    react_1.useEffect(function () {
+        var series = seriesRef.current;
+        var chart = chartRef.current;
+        if (!series || !chart || !processedData.length)
+            return;
+        // Check if data has actually changed to prevent unnecessary updates
+        var currentDataString = JSON.stringify(processedData);
+        if (currentDataString === previousDataRef.current)
+            return;
+        previousDataRef.current = currentDataString;
+        // Batch the updates for better performance
+        requestAnimationFrame(function () {
+            if (series) {
+                series.setData(processedData);
+                // Fit content in the next frame for smoother rendering
+                requestAnimationFrame(function () {
+                    if (chart) {
                         chart.timeScale().fitContent();
                     }
-                }
-            };
-            processNextChunk();
-        };
-        if (interval.endsWith('m') && data[interval].length > 5000) {
-            setDataInChunks(data[interval]);
+                });
+            }
+        });
+    }, [processedData]);
+    /**
+     * Handles timeframe selection changes.
+     * Validates data availability before updating the interval.
+     *
+     * @param _event Mouse event from button click
+     * @param newInterval Selected timeframe
+     */
+    var handleIntervalChange = function (_event, newInterval) {
+        var _a;
+        if (newInterval !== null) {
+            // Pre-process data before setting new interval for smoother transition
+            if ((_a = data[newInterval]) === null || _a === void 0 ? void 0 : _a.length) {
+                setInterval(newInterval);
+            }
         }
-        else {
-            candlestickSeries.setData(data[interval]);
-            chart.timeScale().fitContent();
-        }
-        var handleResize = function () {
-            chart.applyOptions({
-                width: chartContainerRef.current.clientWidth
-            });
-        };
-        window.addEventListener('resize', handleResize);
-        return function () {
-            window.removeEventListener('resize', handleResize);
-            chart.remove();
-        };
-    }, [data, interval]);
+    };
     return (react_1["default"].createElement(material_1.Box, null,
         react_1["default"].createElement(material_1.Box, { sx: buttonGroupStyles },
             react_1["default"].createElement(material_1.ToggleButtonGroup, { value: interval, exclusive: true, onChange: handleIntervalChange, "aria-label": "time-interval", size: "small" },
