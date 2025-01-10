@@ -1,49 +1,38 @@
 {
-  "name": "stock-prediction-game",
+  "name": "price-prophet",
   "version": "1.0.0",
   "private": true,
-  "main": "src/index.tsx",
+  "description": "A modern financial forecasting game built with React",
   "dependencies": {
-    "@emotion/react": "^11.11.0",
+    "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.13.0",
-    "@mui/material": "^5.13.0",
-    "data-forge": "^1.10.2",
-    "lightweight-charts": "4.2.2",
-    "luxon": "^3.5.0",
-    "papaparse": "^5.4.1",
+    "@mui/material": "^5.14.18",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.61",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "data-forge": "^1.10.1",
+    "lightweight-charts": "^4.1.1",
+    "luxon": "^3.4.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
-  },
-  "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "7.21.11",
-    "@types/luxon": "^3.4.2",
-    "@types/node": "16.18.123",
-    "@types/papaparse": "^5.3.15",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/parser": "^5.0.0",
-    "eslint": "^8.0.0",
-    "eslint-plugin-react": "^7.32.2",
-    "prettier": "3.4.2",
-    "ts-node": "10.9.2",
-    "tsx": "4.19.2",
-    "typescript": "4.9.5"
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "cli": "ts-node src/cli.ts",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
-      "react-app"
+      "react-app",
+      "react-app/jest"
     ]
   },
   "browserslist": {
@@ -57,6 +46,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "type": "module"
+  }
 }

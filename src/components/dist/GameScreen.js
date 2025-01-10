@@ -445,11 +445,16 @@ exports.GameScreen = function (_a) {
                     }, sx: {
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: 2
-                    } }, priceChoices.map(function (choice) { return (react_1["default"].createElement(material_1.FormControlLabel, { key: choice, value: choice, control: react_1["default"].createElement(material_1.Radio, { sx: {
+                        gap: 2,
+                        opacity: showResult ? 0.7 : 1,
+                        pointerEvents: showResult ? 'none' : 'auto'
+                    } }, priceChoices.map(function (choice) { return (react_1["default"].createElement(material_1.FormControlLabel, { key: choice, value: choice, disabled: showResult, control: react_1["default"].createElement(material_1.Radio, { sx: {
                             color: 'rgba(255, 255, 255, 0.3)',
                             '&.Mui-checked': {
                                 color: '#00F5A0'
+                            },
+                            '&.Mui-disabled': {
+                                color: selectedChoice === choice ? '#00F5A0' : 'rgba(255, 255, 255, 0.3)'
                             }
                         } }), label: choice, sx: {
                         margin: 0,
@@ -462,7 +467,11 @@ exports.GameScreen = function (_a) {
                             'rgba(0, 245, 160, 0.1)' : 'transparent',
                         transition: 'all 0.3s ease',
                         '&:hover': {
-                            backgroundColor: 'rgba(0, 245, 160, 0.05)'
+                            backgroundColor: showResult ? 'transparent' : 'rgba(0, 245, 160, 0.05)'
+                        },
+                        '&.Mui-disabled': {
+                            opacity: 0.7,
+                            color: 'white'
                         }
                     } })); }))),
             showResult ? (react_1["default"].createElement(react_1["default"].Fragment, null,

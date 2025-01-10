@@ -12,6 +12,15 @@ var react_1 = require("react");
 var material_1 = require("@mui/material");
 exports.ResultsPage = function (_a) {
     var score = _a.score, difficulty = _a.difficulty, onPlayAgain = _a.onPlayAgain, onBackToMenu = _a.onBackToMenu;
+    // Add logging on mount
+    react_1.useEffect(function () {
+        console.log('ResultsPage mounted with props:', {
+            score: score,
+            difficulty: difficulty,
+            hasPlayAgainHandler: !!onPlayAgain,
+            hasBackToMenuHandler: !!onBackToMenu
+        });
+    }, [score, difficulty, onPlayAgain, onBackToMenu]);
     var totalAttempts = score.right + score.wrong;
     var accuracy = totalAttempts > 0 ? (score.right / totalAttempts) * 100 : 0;
     // Calculate grade based on accuracy
@@ -105,9 +114,19 @@ exports.ResultsPage = function (_a) {
             react_1["default"].createElement(material_1.Box, { sx: {
                     display: 'flex',
                     gap: 2,
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    position: 'relative',
+                    zIndex: 10
                 } },
-                react_1["default"].createElement(material_1.Button, { variant: "contained", onClick: onPlayAgain, sx: {
+                react_1["default"].createElement(material_1.Button, { variant: "contained", onClick: function () {
+                        console.log('Play Again clicked');
+                        try {
+                            onPlayAgain();
+                        }
+                        catch (error) {
+                            console.error('Error in Play Again handler:', error);
+                        }
+                    }, sx: {
                         minWidth: 140,
                         height: 48,
                         background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
@@ -116,12 +135,22 @@ exports.ResultsPage = function (_a) {
                         fontWeight: 600,
                         letterSpacing: 1,
                         border: 0,
+                        position: 'relative',
+                        zIndex: 20,
                         '&:hover': {
                             background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
                             boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)'
                         }
                     } }, "Play Again"),
-                react_1["default"].createElement(material_1.Button, { variant: "outlined", onClick: onBackToMenu, sx: {
+                react_1["default"].createElement(material_1.Button, { variant: "outlined", onClick: function () {
+                        console.log('Back to Menu clicked');
+                        try {
+                            onBackToMenu();
+                        }
+                        catch (error) {
+                            console.error('Error in Back to Menu handler:', error);
+                        }
+                    }, sx: {
                         minWidth: 140,
                         height: 48,
                         borderColor: 'rgba(0, 245, 160, 0.5)',
@@ -129,6 +158,8 @@ exports.ResultsPage = function (_a) {
                         fontSize: '1rem',
                         fontWeight: 600,
                         letterSpacing: 1,
+                        position: 'relative',
+                        zIndex: 20,
                         '&:hover': {
                             borderColor: '#00F5A0',
                             backgroundColor: 'rgba(0, 245, 160, 0.1)'

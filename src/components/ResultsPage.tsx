@@ -6,7 +6,7 @@
  * with neon accents matching the game's aesthetic.
  *********************************************************************/
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -31,6 +31,16 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
   onPlayAgain,
   onBackToMenu,
 }) => {
+  // Add logging on mount
+  useEffect(() => {
+    console.log('ResultsPage mounted with props:', {
+      score,
+      difficulty,
+      hasPlayAgainHandler: !!onPlayAgain,
+      hasBackToMenuHandler: !!onBackToMenu
+    });
+  }, [score, difficulty, onPlayAgain, onBackToMenu]);
+
   const totalAttempts = score.right + score.wrong;
   const accuracy = totalAttempts > 0 ? (score.right / totalAttempts) * 100 : 0;
   
@@ -152,10 +162,19 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           display: 'flex', 
           gap: 2,
           justifyContent: 'center',
+          position: 'relative',
+          zIndex: 10
         }}>
           <Button
             variant="contained"
-            onClick={onPlayAgain}
+            onClick={() => {
+              console.log('Play Again clicked');
+              try {
+                onPlayAgain();
+              } catch (error) {
+                console.error('Error in Play Again handler:', error);
+              }
+            }}
             sx={{
               minWidth: 140,
               height: 48,
@@ -165,6 +184,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               fontWeight: 600,
               letterSpacing: 1,
               border: 0,
+              position: 'relative',
+              zIndex: 20,
               '&:hover': {
                 background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
                 boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',
@@ -176,7 +197,14 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
 
           <Button
             variant="outlined"
-            onClick={onBackToMenu}
+            onClick={() => {
+              console.log('Back to Menu clicked');
+              try {
+                onBackToMenu();
+              } catch (error) {
+                console.error('Error in Back to Menu handler:', error);
+              }
+            }}
             sx={{
               minWidth: 140,
               height: 48,
@@ -185,6 +213,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               fontSize: '1rem',
               fontWeight: 600,
               letterSpacing: 1,
+              position: 'relative',
+              zIndex: 20,
               '&:hover': {
                 borderColor: '#00F5A0',
                 backgroundColor: 'rgba(0, 245, 160, 0.1)',

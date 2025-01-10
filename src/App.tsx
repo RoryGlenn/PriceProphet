@@ -6,7 +6,7 @@
  * difficulty selection and game session management.
  *********************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WelcomePage } from './components/WelcomePage';
 import { GameScreen } from './components/GameScreen';
 import { ResultsPage } from './components/ResultsPage';
@@ -23,31 +23,42 @@ export const App: React.FC = () => {
   const [difficulty, setDifficulty] = useState<string>('');
   const [score, setScore] = useState<GameScore>({ right: 0, wrong: 0 });
 
+  // Log state changes
+  useEffect(() => {
+    console.log('App state changed:', {
+      gameState,
+      difficulty,
+      score
+    });
+  }, [gameState, difficulty, score]);
+
   const handleStartGame = (selectedDifficulty: string) => {
-    console.log('Starting game with difficulty:', selectedDifficulty);
+    console.log('handleStartGame called with difficulty:', selectedDifficulty);
     setDifficulty(selectedDifficulty);
     setScore({ right: 0, wrong: 0 });
     setGameState('playing');
   };
 
   const handleGameEnd = (finalScore: GameScore) => {
-    console.log('Game ended with score:', finalScore);
+    console.log('handleGameEnd called with score:', finalScore);
     setScore(finalScore);
     setGameState('results');
   };
 
   const handlePlayAgain = () => {
-    console.log('Starting new game with same difficulty');
+    console.log('handlePlayAgain called with current difficulty:', difficulty);
     setScore({ right: 0, wrong: 0 });
     setGameState('playing');
   };
 
   const handleBackToMenu = () => {
-    console.log('Returning to welcome screen');
+    console.log('handleBackToMenu called');
     setGameState('welcome');
     setDifficulty('');
     setScore({ right: 0, wrong: 0 });
   };
+
+  console.log('App rendering with gameState:', gameState);
 
   switch (gameState) {
     case 'playing':
@@ -58,6 +69,12 @@ export const App: React.FC = () => {
         />
       );
     case 'results':
+      console.log('Rendering ResultsPage with props:', {
+        score,
+        difficulty,
+        hasPlayAgainHandler: !!handlePlayAgain,
+        hasBackToMenuHandler: !!handleBackToMenu
+      });
       return (
         <ResultsPage 
           score={score}

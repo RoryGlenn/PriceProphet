@@ -510,19 +510,25 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
             sx={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 2
+              gap: 2,
+              opacity: showResult ? 0.7 : 1,
+              pointerEvents: showResult ? 'none' : 'auto',
             }}
           >
             {priceChoices.map((choice) => (
               <FormControlLabel
                 key={choice}
                 value={choice}
+                disabled={showResult}
                 control={
                   <Radio 
                     sx={{
                       color: 'rgba(255, 255, 255, 0.3)',
                       '&.Mui-checked': {
                         color: '#00F5A0',
+                      },
+                      '&.Mui-disabled': {
+                        color: selectedChoice === choice ? '#00F5A0' : 'rgba(255, 255, 255, 0.3)',
                       },
                     }}
                   />
@@ -539,8 +545,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
                     'rgba(0, 245, 160, 0.1)' : 'transparent',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    backgroundColor: 'rgba(0, 245, 160, 0.05)',
-                  }
+                    backgroundColor: showResult ? 'transparent' : 'rgba(0, 245, 160, 0.05)',
+                  },
+                  '&.Mui-disabled': {
+                    opacity: 0.7,
+                    color: 'white',
+                  },
                 }}
               />
             ))}
