@@ -33,27 +33,36 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
 }) => {
   // Add logging on mount
   useEffect(() => {
-    console.log('ResultsPage mounted with props:', {
-      score,
-      difficulty,
-      hasPlayAgainHandler: !!onPlayAgain,
-      hasBackToMenuHandler: !!onBackToMenu
-    });
-  }, [score, difficulty, onPlayAgain, onBackToMenu]);
+    // Component initialization
+  }, []);
 
-  const totalAttempts = score.right + score.wrong;
-  const accuracy = totalAttempts > 0 ? (score.right / totalAttempts) * 100 : 0;
-  
-  // Calculate grade based on accuracy
+  const handlePlayAgain = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    try {
+      onPlayAgain();
+    } catch (error) {
+      console.error('Error in Play Again handler:', error);
+    }
+  };
+
+  const handleBackToMenu = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    try {
+      onBackToMenu();
+    } catch (error) {
+      console.error('Error in Back to Menu handler:', error);
+    }
+  };
+
   const getGrade = (accuracy: number): string => {
-    if (accuracy >= 90) return 'S';
-    if (accuracy >= 80) return 'A';
-    if (accuracy >= 70) return 'B';
-    if (accuracy >= 60) return 'C';
-    if (accuracy >= 50) return 'D';
+    if (accuracy >= 90) return 'A';
+    if (accuracy >= 80) return 'B';
+    if (accuracy >= 70) return 'C';
+    if (accuracy >= 60) return 'D';
     return 'F';
   };
 
+  const accuracy = (score.right / (score.right + score.wrong)) * 100 || 0;
   const grade = getGrade(accuracy);
 
   return (
@@ -167,14 +176,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
         }}>
           <Button
             variant="contained"
-            onClick={() => {
-              console.log('Play Again clicked');
-              try {
-                onPlayAgain();
-              } catch (error) {
-                console.error('Error in Play Again handler:', error);
-              }
-            }}
+            onClick={handlePlayAgain}
             sx={{
               minWidth: 140,
               height: 48,
@@ -197,14 +199,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
 
           <Button
             variant="outlined"
-            onClick={() => {
-              console.log('Back to Menu clicked');
-              try {
-                onBackToMenu();
-              } catch (error) {
-                console.error('Error in Back to Menu handler:', error);
-              }
-            }}
+            onClick={handleBackToMenu}
             sx={{
               minWidth: 140,
               height: 48,

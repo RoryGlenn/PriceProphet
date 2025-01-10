@@ -73,9 +73,27 @@ exports.ChartComponent = function (_a) {
                     var date = typeof time === 'number'
                         ? luxon_1.DateTime.fromSeconds(time)
                         : luxon_1.DateTime.fromFormat(time, 'yyyy-MM-dd');
-                    return interval.endsWith('m') || interval.endsWith('h')
-                        ? date.toFormat('HH:mm')
-                        : date.toFormat('MMM dd');
+                    // For minute intervals, show date and time
+                    if (interval.endsWith('m')) {
+                        return date.toFormat('MMM dd HH:mm');
+                    }
+                    // For hour intervals, show date and hour
+                    if (interval.endsWith('h')) {
+                        return date.toFormat('MMM dd HH:00');
+                    }
+                    // For daily intervals
+                    if (interval === 'D') {
+                        return date.toFormat('MMM dd');
+                    }
+                    // For weekly intervals
+                    if (interval === 'W') {
+                        return date.toFormat('MMM dd');
+                    }
+                    // For monthly intervals
+                    if (interval === 'M') {
+                        return date.toFormat('MMM yyyy');
+                    }
+                    return date.toFormat('MMM dd');
                 }
             }
         });
@@ -85,6 +103,33 @@ exports.ChartComponent = function (_a) {
             borderVisible: false,
             wickUpColor: '#00F5A0',
             wickDownColor: '#ef5350'
+        });
+        // Add tooltip formatter for consistent date display
+        chart.applyOptions({
+            localization: {
+                timeFormatter: function (time) {
+                    var date = typeof time === 'number'
+                        ? luxon_1.DateTime.fromSeconds(time)
+                        : luxon_1.DateTime.fromFormat(time, 'yyyy-MM-dd');
+                    // Use same format as x-axis labels
+                    if (interval.endsWith('m')) {
+                        return date.toFormat('MMM dd HH:mm');
+                    }
+                    if (interval.endsWith('h')) {
+                        return date.toFormat('MMM dd HH:00');
+                    }
+                    if (interval === 'D') {
+                        return date.toFormat('MMM dd');
+                    }
+                    if (interval === 'W') {
+                        return date.toFormat('MMM dd');
+                    }
+                    if (interval === 'M') {
+                        return date.toFormat('MMM yyyy');
+                    }
+                    return date.toFormat('MMM dd');
+                }
+            }
         });
         var setDataInChunks = function (chartData) {
             var CHUNK_SIZE = 5000;

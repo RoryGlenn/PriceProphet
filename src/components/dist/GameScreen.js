@@ -17,7 +17,6 @@ var material_1 = require("@mui/material");
 var ChartComponent_1 = require("./ChartComponent");
 var random_ohlc_1 = require("../random_ohlc");
 var priceUtils_1 = require("../utils/priceUtils");
-var luxon_1 = require("luxon");
 /**
  * GameScreen component handles the main game logic and UI.
  * Manages game state, data generation, and user interactions.
@@ -40,11 +39,10 @@ exports.GameScreen = function (_a) {
      * Creates 90 days of price data with random volatility and drift.
      */
     var generateRandomData = function () {
-        console.log('Generating random OHLC data');
         var volatility = Math.random() * 2 + 1;
         var drift = Math.random() * 2 + 1;
         var randOHLC = new random_ohlc_1.RandomOHLC({
-            daysNeeded: 90,
+            daysNeeded: 91,
             startPrice: 10000,
             volatility: volatility,
             drift: drift
@@ -55,7 +53,6 @@ exports.GameScreen = function (_a) {
      * Update game state with new round data.
      */
     var updateGameState = function (processedData, choices, futurePrice) {
-        console.log('Updating game state with:', { choices: choices, futurePrice: futurePrice });
         setHistoricalData(processedData);
         setPriceChoices(choices);
         setCorrectPrice(futurePrice.toFixed(2));
@@ -63,8 +60,15 @@ exports.GameScreen = function (_a) {
         setShowResult(false);
         setLoading(false);
     };
+    /**
+     * Converts a single OhlcRow to an OhlcBar format required by the charting library.
+     * The main transformation is converting the Unix timestamp to the chart's Time format.
+     *
+     * @param bar Raw OHLC bar with Unix timestamp
+     * @param timeInterval Current timeframe being processed
+     * @returns Formatted OHLC bar ready for the chart
+     */
     var formatOhlcBar = react_1.useCallback(function (bar, timeInterval) {
-        // Always use Unix timestamp for time
         return {
             time: bar.timestamp,
             open: bar.open,
@@ -76,56 +80,83 @@ exports.GameScreen = function (_a) {
     var sortOhlcBars = react_1.useCallback(function (a, b) {
         return typeof a.time === 'number' ? a.time - b.time : a.time < b.time ? -1 : 1;
     }, []);
-    var logDataStructure = react_1.useCallback(function (processedData) {
-        console.log('Available time intervals:', Object.keys(processedData));
-        console.log('Data structure:', {
-            timeIntervals: Object.keys(processedData),
-            sampleSizes: Object.entries(processedData).map(function (_a) {
-                var tf = _a[0], data = _a[1];
-                return tf + ": " + data.length + " bars";
-            })
-        });
-    }, []);
+    // const logDataStructure = useCallback((processedData: { [key: string]: OhlcBar[] }) => {
+    //   // Keep this empty but maintain the function for future debugging if needed
+    // }, []);
+    /**
+     * Converts raw OHLC data from RandomOHLC into a format suitable for the charting library.
+     *
+     * @param data Raw data from RandomOHLC
+     *    Structure: { [timeframe: string]: OhlcRow[] }
+     *    OhlcRow = {
+     *      timestamp: number;  // Unix timestamp in seconds
+     *      open: number;
+     *      high: number;
+     *      low: number;
+     *      close: number;
+     *    }
+     *
+     * @returns Processed data for the chart
+     *    Structure: { [timeframe: string]: OhlcBar[] }
+     *    OhlcBar = {
+     *      time: Time;  // lightweight-charts specific time format
+     *      open: number;
+     *      high: number;
+     *      low: number;
+     *      close: number;
+     *    }
+     */
     var processOhlcData = react_1.useCallback(function (data) {
-        var _a;
+        // Get the trimmed 1-minute data
+        var minuteData = data['1m'];
+        // Define all timeframes we want to display
         var displayIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
+        // Initialize the processed data object that will be used by the chart
         var processedData = {};
-        displayIntervals.forEach(function (tf) {
-            processedData[tf] = data[tf]
-                .map(function (bar) { return formatOhlcBar(bar, tf); })
-                .sort(function (a, b) { return sortOhlcBars(a, b); });
+        // Process 1-minute data first
+        processedData['1m'] = minuteData
+            .map(function (bar) { return formatOhlcBar(bar, '1m'); })
+            .sort(function (a, b) { return sortOhlcBars(a, b); });
+        // Group minute data into larger timeframes
+        displayIntervals.slice(1).forEach(function (tf) {
+            var barsPerInterval = (function () {
+                switch (tf) {
+                    case '5m': return 5;
+                    case '15m': return 15;
+                    case '1h': return 60;
+                    case '4h': return 240;
+                    case 'D': return 1440;
+                    case 'W': return 1440 * 7;
+                    case 'M': return 1440 * 30;
+                    default: return 1;
+                }
+            })();
+            // Group minute data into chunks
+            var chunks = [];
+            for (var i = 0; i < minuteData.length; i += barsPerInterval) {
+                var chunk = minuteData.slice(i, i + barsPerInterval);
+                // Always include the chunk, even if it's partial
+                // This is especially important for weekly and monthly intervals
+                if (chunk.length > 0) {
+                    chunks.push(chunk);
+                }
+            }
+            // Convert chunks to OHLC bars
+            processedData[tf] = chunks.map(function (chunk) { return ({
+                time: chunk[0].timestamp,
+                open: chunk[0].open,
+                high: Math.max.apply(Math, chunk.map(function (bar) { return bar.high; })),
+                low: Math.min.apply(Math, chunk.map(function (bar) { return bar.low; })),
+                close: chunk[chunk.length - 1].close
+            }); });
         });
-        // Log first date for each interval
-        var firstDates = Object.entries(processedData).map(function (_a) {
-            var _b, _c;
+        // Log the data structure for verification
+        console.log('Processed data lengths:', Object.fromEntries(Object.entries(processedData).map(function (_a) {
             var interval = _a[0], data = _a[1];
-            return ({
-                interval: interval,
-                firstDate: luxon_1.DateTime.fromSeconds((_b = data[0]) === null || _b === void 0 ? void 0 : _b.time).toISO(),
-                timestamp: (_c = data[0]) === null || _c === void 0 ? void 0 : _c.time
-            });
-        });
-        console.log('First dates for each interval:', firstDates);
-        // Validate close prices
-        var closeValues = Object.entries(processedData).map(function (_a) {
-            var _b, _c;
-            var interval = _a[0], data = _a[1];
-            return ({
-                interval: interval,
-                close: (_b = data[data.length - 1]) === null || _b === void 0 ? void 0 : _b.close,
-                timestamp: (_c = data[data.length - 1]) === null || _c === void 0 ? void 0 : _c.time
-            });
-        });
-        console.log('Frontend - Final close prices:', closeValues);
-        var firstClose = (_a = closeValues[0]) === null || _a === void 0 ? void 0 : _a.close;
-        var mismatchedIntervals = closeValues.filter(function (item) { return Math.abs((item.close - firstClose) / firstClose) > 0.0001; });
-        if (mismatchedIntervals.length > 0) {
-            console.error('Frontend - Close price mismatch:', mismatchedIntervals);
-            throw new Error('Close prices do not match across intervals');
-        }
-        logDataStructure(processedData);
+            return [interval, data.length];
+        })));
         return processedData;
-    }, [formatOhlcBar, sortOhlcBars, logDataStructure]);
+    }, [formatOhlcBar, sortOhlcBars]);
     var getFutureIndex = react_1.useCallback(function (difficulty) {
         switch (difficulty) {
             case 'Easy':
@@ -138,65 +169,83 @@ exports.GameScreen = function (_a) {
                 return 1;
         }
     }, []);
+    var getBarsToRemove = react_1.useCallback(function (timeframe, days) {
+        // Calculate how many bars to remove for each timeframe based on number of days
+        var minutesInDay = 1440;
+        switch (timeframe) {
+            case '1m': return days * minutesInDay; // 1440 minutes per day
+            case '5m': return days * (minutesInDay / 5); // 288 5-min bars per day
+            case '15m': return days * (minutesInDay / 15); // 96 15-min bars per day
+            case '1h': return days * 24; // 24 1-hour bars per day
+            case '4h': return days * 6; // 6 4-hour bars per day
+            case 'D': return days; // 1 daily bar per day
+            case 'W': return Math.ceil(days / 7); // Convert days to weeks
+            case 'M': return Math.ceil(days / 30); // Approximate months
+            default: return days;
+        }
+    }, []);
     var generateChoices = react_1.useCallback(function (processedData, difficulty) {
-        var futureIndex = getFutureIndex(difficulty);
+        // Log the initial data lengths
+        console.log('Initial data lengths:', Object.fromEntries(Object.entries(processedData).map(function (_a) {
+            var interval = _a[0], data = _a[1];
+            return [interval, data.length];
+        })));
+        // Get the 91st day's close price as the answer
         var futurePrice = processedData['D'][processedData['D'].length - 1].close;
+        console.log('Future price (91st day):', futurePrice);
+        // Calculate days to remove based on difficulty
+        var daysToRemove = getFutureIndex(difficulty);
+        console.log('Days to remove based on difficulty:', {
+            difficulty: difficulty,
+            daysToRemove: daysToRemove
+        });
         var choices = priceUtils_1.generatePriceChoices(futurePrice);
+        // Remove the appropriate number of bars from each timeframe
         Object.keys(processedData).forEach(function (tf) {
-            processedData[tf] = processedData[tf].slice(0, -futureIndex);
+            var beforeLength = processedData[tf].length;
+            var barsToRemove = getBarsToRemove(tf, daysToRemove);
+            processedData[tf] = processedData[tf].slice(0, -barsToRemove);
+            console.log(tf + " data: " + beforeLength + " bars -> " + processedData[tf].length + " bars (removed " + barsToRemove + " bars)");
         });
         return { choices: choices, futurePrice: futurePrice };
-    }, [getFutureIndex]);
+    }, [getFutureIndex, getBarsToRemove]);
     var generateNewRound = react_1.useCallback(function () {
-        console.log('Generating new round');
         setLoading(true);
         try {
-            var data = generateRandomData();
-            var processedData = processOhlcData(data);
-            var _a = generateChoices(processedData, difficulty), choices = _a.choices, futurePrice = _a.futurePrice;
+            // Get raw data
+            var rawData = generateRandomData();
+            // Calculate how many minute bars to remove based on difficulty
+            var daysToRemove = getFutureIndex(difficulty);
+            var minutesToRemove = daysToRemove * 1440; // 1440 minutes per day
+            // Store the future price before trimming
+            var futurePrice = rawData['D'][rawData['D'].length - 1].close;
+            // Remove future data from 1-minute data first
+            rawData['1m'] = rawData['1m'].slice(0, -minutesToRemove);
+            // Now process the trimmed data into all timeframes
+            var processedData = processOhlcData(rawData);
+            // Generate choices using the stored future price
+            var choices = priceUtils_1.generatePriceChoices(futurePrice);
+            // Update game state
             updateGameState(processedData, choices, futurePrice);
         }
         catch (error) {
             console.error('Error generating new round:', error);
             setLoading(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [difficulty, processOhlcData, generateChoices]);
+    }, [difficulty, processOhlcData, getFutureIndex]);
     // Initialize game on mount
     react_1.useEffect(function () {
-        console.log('GameScreen initialization started');
         if (!hasInitialized.current) {
-            console.log('Generating initial game data');
             generateNewRound();
             hasInitialized.current = true;
         }
-        else {
-            console.log('Skipping duplicate initialization');
-        }
-        return function () {
-            console.log('GameScreen cleanup');
-        };
     }, [generateNewRound]);
-    // Add logging to track state changes
-    react_1.useEffect(function () {
-        console.log('Score changed:', score);
-    }, [score]);
-    react_1.useEffect(function () {
-        console.log('ShowResult changed:', showResult);
-    }, [showResult]);
     var handleNext = function () {
-        console.log('Next round button clicked');
-        console.log('Current attempt:', attempt);
         if (attempt >= 5) {
-            console.log('Game over, returning to menu with score:', score);
             onGameEnd(score);
         }
         else {
-            console.log('Starting next round');
-            setAttempt(function (prev) {
-                console.log('Incrementing attempt from', prev, 'to', prev + 1);
-                return prev + 1;
-            });
+            setAttempt(function (prev) { return prev + 1; });
             setShowResult(false);
             setSelectedChoice('');
             generateNewRound();
@@ -210,23 +259,6 @@ exports.GameScreen = function (_a) {
         event.preventDefault();
         handleNext();
     };
-    // Add test logging on mount
-    react_1.useEffect(
-    /* eslint-disable react-hooks/exhaustive-deps */
-    function () {
-        console.log('GameScreen mounted');
-        console.log('Initial state:', {
-            difficulty: difficulty,
-            priceChoices: priceChoices,
-            selectedChoice: selectedChoice,
-            correctPrice: correctPrice,
-            showResult: showResult,
-            score: score,
-            attempt: attempt
-        });
-    }, []
-    /* eslint-enable react-hooks/exhaustive-deps */
-    );
     if (loading) {
         return (react_1["default"].createElement(material_1.Box, { display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" },
             react_1["default"].createElement(material_1.CircularProgress, null)));
@@ -332,7 +364,7 @@ exports.GameScreen = function (_a) {
                         mb: 3
                     } }, "What do you think the future closing price will be?"),
                 react_1["default"].createElement(material_1.RadioGroup, { value: selectedChoice, onChange: function (e) {
-                        console.log('Radio selection changed:', e.target.value);
+                        // console.log('Radio selection changed:', e.target.value);
                         setSelectedChoice(e.target.value);
                     }, sx: {
                         display: 'grid',
@@ -394,7 +426,7 @@ exports.GameScreen = function (_a) {
                     } }, attempt >= 5 ? 'See Results' : 'Next Round'))) : (react_1["default"].createElement(material_1.Button, { variant: "contained", onClick: function (e) {
                     e.stopPropagation();
                     e.preventDefault();
-                    console.log('Submit button clicked - raw event');
+                    // console.log('Submit button clicked - raw event');
                     console.log('Current state:', {
                         selectedChoice: selectedChoice,
                         correctPrice: correctPrice,
@@ -409,10 +441,8 @@ exports.GameScreen = function (_a) {
                     }
                     setShowResult(true);
                 }, onMouseDown: function (e) {
-                    console.log('Button mousedown event');
                     e.stopPropagation();
                 }, onMouseUp: function (e) {
-                    console.log('Button mouseup event');
                     e.stopPropagation();
                 }, size: "large", disabled: !selectedChoice, sx: {
                     display: 'block',

@@ -33,37 +33,25 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
 
   // Track component mounting
   useEffect(() => {
-    console.log('WelcomePage mounted');
+    // Component initialization
   }, []);
 
-  // Track difficulty changes
-  useEffect(() => {
-    if (selectedDifficulty) {
-      console.log('Difficulty changed to:', selectedDifficulty);
-    }
-  }, [selectedDifficulty]);
-
-  const handleDifficultyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newDifficulty = event.target.value;
-    console.log('Setting difficulty to:', newDifficulty);
+  const handleDifficultyChange = (_event: React.ChangeEvent<HTMLInputElement>) => {
+    const newDifficulty = (_event.target as HTMLInputElement).value as DifficultyLevel;
     setSelectedDifficulty(newDifficulty);
   };
 
-  const handleStart = () => {
-    console.log('Start button clicked');
-    console.log('Selected difficulty:', selectedDifficulty);
-    if (selectedDifficulty) {
-      console.log('Calling onStartGame with difficulty:', selectedDifficulty);
-      onStartGame(selectedDifficulty);
-    }
+  const handleStartGame = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    onStartGame(selectedDifficulty);
   };
 
   return (
     <Container 
-      maxWidth={false} 
+      maxWidth={false}
       sx={{ 
-        height: '100vh', 
-        display: 'flex', 
+        height: '100vh',
+        display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)',
@@ -72,11 +60,10 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
     >
       <Paper 
         elevation={24}
-        onClick={() => console.log('Paper clicked')}
         sx={{ 
           width: '100%',
           maxWidth: 500,
-          p: 5, 
+          p: 5,
           background: 'rgba(16, 20, 24, 0.8)',
           backdropFilter: 'blur(20px)',
           color: 'white',
@@ -96,7 +83,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
             WebkitMaskComposite: 'xor',
             maskComposite: 'exclude',
-          },
+          }
         }}
       >
         <Typography 
@@ -216,20 +203,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
         <Button
           component="button"
           variant="contained"
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log('Button clicked - event handler');
-            handleStart();
-          }}
-          onMouseDown={(e) => {
-            console.log('Button mouse down');
-            e.stopPropagation();
-          }}
-          onMouseUp={(e) => {
-            console.log('Button mouse up');
-            e.stopPropagation();
-          }}
-          disabled={!selectedDifficulty}
+          onClick={handleStartGame}
           sx={{ 
             minWidth: 200,
             height: 48,

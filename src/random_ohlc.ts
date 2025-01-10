@@ -75,10 +75,9 @@ export class RandomOHLC {
    */
   public generateOhlcData(): TimeIntervalDict {
     const minuteData = this.generateMinuteData();
-    const result = this.createTimeIntervalData(minuteData);
-    const normalized = this.normalizeTimeIntervals(result, minuteData);
-    this.validateOpenPrice(normalized);
-    return normalized;
+    const timeIntervalData = this.createTimeIntervalData(minuteData);
+    this.validateOpenPrice(timeIntervalData);
+    return timeIntervalData;
   }
 
   /**
@@ -143,72 +142,6 @@ export class RandomOHLC {
     }));
   }
 
-  /**
-   * Ensure all time intervals have the same start and end times.
-   * Filters out any data points outside the main data range.
-   *
-   * @param result TimeIntervalDict to normalize
-   * @param minuteData Original minute data for reference
-   * @returns Normalized TimeIntervalDict
-   */
-  private normalizeTimeIntervals(
-    result: TimeIntervalDict,
-    minuteData: OhlcRow[]
-  ): TimeIntervalDict {
-    // Get the start and end timestamps from the minute data
-    const startDate = DateTime.fromSeconds(minuteData[0].timestamp).startOf('day');
-    const endDate = DateTime.fromSeconds(minuteData[minuteData.length - 1].timestamp);
-    
-    // Ensure endDate is at the end of its last complete interval
-    const lastCompleteDate = endDate.startOf('day');
-
-    console.log('Normalizing time intervals:', {
-      start: startDate.toISO(),
-      end: lastCompleteDate.toISO()
-    });
-
-    // Filter data for each interval to ensure they all have the same date range
-    Object.keys(result).forEach((interval) => {
-      result[interval] = result[interval].filter((bar) => {
-        const barDate = DateTime.fromSeconds(bar.timestamp);
-        // Only include bars that are within complete intervals
-        switch (interval) {
-          case '4h':
-            // For 4h, ensure we're not including a partial 4-hour block
-            return barDate >= startDate && 
-                   barDate.hour % 4 === 0 && 
-                   barDate <= lastCompleteDate.endOf('day');
-          case 'D':
-            // For daily, only include complete days
-            return barDate >= startDate && 
-                   barDate.startOf('day') <= lastCompleteDate;
-          case 'W':
-            // For weekly, only include complete weeks
-            return barDate >= startDate && 
-                   barDate.startOf('week') <= lastCompleteDate;
-          case 'M':
-            // For monthly, only include complete months
-            return barDate >= startDate && 
-                   barDate.startOf('month') <= lastCompleteDate;
-          default:
-            // For minute-based intervals, include all points within the day range
-            return barDate >= startDate && barDate <= lastCompleteDate.endOf('day');
-        }
-      });
-    });
-
-    // Get the final close price from the minute data
-    const finalClose = minuteData[minuteData.length - 1].close;
-
-    // Ensure all intervals have the same final close price
-    Object.keys(result).forEach((interval) => {
-      if (result[interval].length > 0) {
-        result[interval][result[interval].length - 1].close = finalClose;
-      }
-    });
-
-    return result;
-  }
 
   /**
    * Calculate per-minute volatility and drift from annual values.
@@ -343,110 +276,38 @@ export class RandomOHLC {
    * @returns Array of resampled OHLC rows
    */
   private resampleToTimeInterval(data: OhlcRow[], timeInterval: string): OhlcRow[] {
-    // Convert data to DataFrame
-    const df = new DataFrame(data);
-    const firstOpenPrice = data[0].open;
-
-    // Create a grouping key based on the time interval
-    const grouped = df.groupBy((row: OhlcRow) => {
-      const date = DateTime.fromSeconds(row.timestamp);
-      switch (timeInterval) {
-        case '1m':
-          return date.set({ second: 0 }).toSeconds();
-        case '5m':
-          return date.set({
-            minute: Math.floor(date.minute / 5) * 5,
-            second: 0
-          }).toSeconds();
-        case '15m':
-          return date.set({
-            minute: Math.floor(date.minute / 15) * 15,
-            second: 0
-          }).toSeconds();
-        case '1h':
-          return date.startOf('hour').toSeconds();
-        case '4h':
-          return date.set({
-            hour: Math.floor(date.hour / 4) * 4,
-            minute: 0,
-            second: 0
-          }).toSeconds();
-        case 'D':
-          return date.startOf('day').toSeconds();
-        case 'W':
-          return date.startOf('week').toSeconds();
-        case 'M':
-          return date.startOf('month').toSeconds();
-        default:
-          return row.timestamp;
-      }
-    });
-
-    // Aggregate the data
-    const aggregated = grouped.select((group: IDataFrame) => {
-      const rows = group.toArray();
-      const groupTimestamp = rows[0].timestamp;
-      return {
-        timestamp: groupTimestamp,
-        open: groupTimestamp === data[0].timestamp ? firstOpenPrice : rows[0].open,
-        high: Math.max(...rows.map(r => r.high)),
-        low: Math.min(...rows.map(r => r.low)),
-        close: rows[rows.length - 1].close
-      };
-    }).toArray();
-
-    return aggregated.sort((a, b) => a.timestamp - b.timestamp);
-  }
-
-  /**
-   * Get a string key for grouping data points by time interval.
-   * Creates consistent keys for aggregating data into larger intervals.
-   *
-   * @param date DateTime object to format
-   * @param timeInterval Target time interval
-   * @returns Formatted string key
-   * @throws Error if timeInterval is not supported
-   */
-  private getTimeKey(date: DateTime, timeInterval: string): string {
-    /*
-     * This function creates standardized string keys for grouping time periods.
-     * For example:
-     * - 1min: '2030-01-01-09-30' (year-month-day-hour-minute)
-     * - 1H:   '2030-01-01-09'    (year-month-day-hour)
-     * - 1D:   '2030-01-01'       (year-month-day)
-     * 
-     * For intervals like 5min and 15min, we need to round down the minutes
-     * to ensure consistent grouping (e.g., 09:05, 09:10, 09:15 for 5min intervals)
-     */
-    switch (timeInterval) {
-      case '1m':
-        return date.toFormat('yyyy-MM-dd-HH-mm');
-      case '5m':
-        return (
-          date.toFormat('yyyy-MM-dd-HH-') +
-          (Math.floor(date.minute / 5) * 5).toString().padStart(2, '0')
-        );
-      case '15m':
-        return (
-          date.toFormat('yyyy-MM-dd-HH-') +
-          (Math.floor(date.minute / 15) * 15).toString().padStart(2, '0')
-        );
-      case '1h':
-        return date.toFormat('yyyy-MM-dd-HH');
-      case '4h':
-        return (
-          date.toFormat('yyyy-MM-dd-') + (Math.floor(date.hour / 4) * 4).toString().padStart(2, '0')
-        );
-      case 'D':
-        return date.toFormat('yyyy-MM-dd');
-      case 'W':
-        return date.startOf('week').toFormat('yyyy-MM-dd');
-      case 'M':
-        return date.startOf('month').toFormat('yyyy-MM-dd');
-      default:
-        throw new Error(`Unsupported time interval: ${timeInterval}`);
+    // If it's 1-minute data, return as is
+    if (timeInterval === '1m') {
+      return data;
     }
+
+    // Define the chunk size for each interval
+    const minutesPerChunk = {
+      '5m': 5,
+      '15m': 15,
+      '1h': 60,
+      '4h': 240,
+      'D': 1440,
+      'W': 1440 * 7,
+      'M': 1440 * 30
+    }[timeInterval] || 1;
+
+    // Group data into chunks
+    const chunks: OhlcRow[][] = [];
+    for (let i = 0; i < data.length; i += minutesPerChunk) {
+      chunks.push(data.slice(i, i + minutesPerChunk));
+    }
+
+    // Convert chunks to OHLC bars
+    return chunks.map(chunk => ({
+      timestamp: chunk[0].timestamp,
+      open: chunk[0].open,
+      high: Math.max(...chunk.map(bar => bar.high)),
+      low: Math.min(...chunk.map(bar => bar.low)),
+      close: chunk[chunk.length - 1].close
+    }));
   }
+
 
   /**
    * Validate that all intervals have the same final open price

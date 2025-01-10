@@ -45,12 +45,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
    * Creates 90 days of price data with random volatility and drift.
    */
   const generateRandomData = () => {
-    console.log('Generating random OHLC data');
     const volatility = Math.random() * 2 + 1;
     const drift = Math.random() * 2 + 1;
 
     const randOHLC = new RandomOHLC({
-      daysNeeded: 90,
+      daysNeeded: 91,
       startPrice: 10000,
       volatility: volatility,
       drift: drift,
@@ -67,7 +66,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     choices: string[],
     futurePrice: number
   ) => {
-    console.log('Updating game state with:', { choices, futurePrice });
     setHistoricalData(processedData);
     setPriceChoices(choices);
     setCorrectPrice(futurePrice.toFixed(2));
@@ -76,14 +74,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     setLoading(false);
   };
 
+  /**
+   * Converts a single OhlcRow to an OhlcBar format required by the charting library.
+   * The main transformation is converting the Unix timestamp to the chart's Time format.
+   * 
+   * @param bar Raw OHLC bar with Unix timestamp
+   * @param timeInterval Current timeframe being processed
+   * @returns Formatted OHLC bar ready for the chart
+   */
   const formatOhlcBar = useCallback((bar: OhlcRow, timeInterval: string): OhlcBar => {
-    // Always use Unix timestamp for time
     return {
-      time: bar.timestamp as Time,
-      open: bar.open,
-      high: bar.high,
-      low: bar.low,
-      close: bar.close,
+      time: bar.timestamp as Time,  // Cast Unix timestamp to chart's Time type
+      open: bar.open,               // Price values remain the same
+      high: bar.high,               // Just copying them from
+      low: bar.low,                 // the raw data to the
+      close: bar.close,             // processed format
     };
   }, []);
 
@@ -91,55 +96,91 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     typeof a.time === 'number' ? a.time - (b.time as number) : a.time < b.time ? -1 : 1
   , []);
 
-  const logDataStructure = useCallback((processedData: { [key: string]: OhlcBar[] }) => {
-    console.log('Available time intervals:', Object.keys(processedData));
-    console.log('Data structure:', {
-      timeIntervals: Object.keys(processedData),
-      sampleSizes: Object.entries(processedData).map(([tf, data]) => `${tf}: ${data.length} bars`),
-    });
-  }, []);
+  // const logDataStructure = useCallback((processedData: { [key: string]: OhlcBar[] }) => {
+  //   // Keep this empty but maintain the function for future debugging if needed
+  // }, []);
 
+  /**
+   * Converts raw OHLC data from RandomOHLC into a format suitable for the charting library.
+   * 
+   * @param data Raw data from RandomOHLC
+   *    Structure: { [timeframe: string]: OhlcRow[] }
+   *    OhlcRow = {
+   *      timestamp: number;  // Unix timestamp in seconds
+   *      open: number;
+   *      high: number;
+   *      low: number;
+   *      close: number;
+   *    }
+   * 
+   * @returns Processed data for the chart
+   *    Structure: { [timeframe: string]: OhlcBar[] }
+   *    OhlcBar = {
+   *      time: Time;  // lightweight-charts specific time format
+   *      open: number;
+   *      high: number;
+   *      low: number;
+   *      close: number;
+   *    }
+   */
   const processOhlcData = useCallback((data: { [key: string]: OhlcRow[] }) => {
+    // Get the trimmed 1-minute data
+    const minuteData = data['1m'];
+    
+    // Define all timeframes we want to display
     const displayIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'] as const;
+    
+    // Initialize the processed data object that will be used by the chart
     const processedData: { [key: string]: OhlcBar[] } = {};
 
-    displayIntervals.forEach((tf) => {
-      processedData[tf] = data[tf]
-        .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, tf))
-        .sort((a: OhlcBar, b: OhlcBar) => sortOhlcBars(a, b));
+    // Process 1-minute data first
+    processedData['1m'] = minuteData
+      .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, '1m'))
+      .sort((a: OhlcBar, b: OhlcBar) => sortOhlcBars(a, b));
+
+    // Group minute data into larger timeframes
+    displayIntervals.slice(1).forEach((tf) => {
+      const barsPerInterval = (() => {
+        switch (tf) {
+          case '5m': return 5;
+          case '15m': return 15;
+          case '1h': return 60;
+          case '4h': return 240;
+          case 'D': return 1440;
+          case 'W': return 1440 * 7;
+          case 'M': return 1440 * 30;
+          default: return 1;
+        }
+      })();
+
+      // Group minute data into chunks
+      const chunks: OhlcRow[][] = [];
+      for (let i = 0; i < minuteData.length; i += barsPerInterval) {
+        const chunk = minuteData.slice(i, i + barsPerInterval);
+        // Always include the chunk, even if it's partial
+        // This is especially important for weekly and monthly intervals
+        if (chunk.length > 0) {
+          chunks.push(chunk);
+        }
+      }
+
+      // Convert chunks to OHLC bars
+      processedData[tf] = chunks.map(chunk => ({
+        time: chunk[0].timestamp as Time,
+        open: chunk[0].open,
+        high: Math.max(...chunk.map(bar => bar.high)),
+        low: Math.min(...chunk.map(bar => bar.low)),
+        close: chunk[chunk.length - 1].close
+      }));
     });
 
-    // Log first date for each interval
-    const firstDates = Object.entries(processedData).map(([interval, data]) => ({
-      interval,
-      firstDate: DateTime.fromSeconds(data[0]?.time as number).toISO(),
-      timestamp: data[0]?.time
-    }));
+    // Log the data structure for verification
+    console.log('Processed data lengths:', Object.fromEntries(
+      Object.entries(processedData).map(([interval, data]) => [interval, data.length])
+    ));
 
-    console.log('First dates for each interval:', firstDates);
-
-    // Validate close prices
-    const closeValues = Object.entries(processedData).map(([interval, data]) => ({
-      interval,
-      close: data[data.length - 1]?.close,
-      timestamp: data[data.length - 1]?.time
-    }));
-
-    console.log('Frontend - Final close prices:', closeValues);
-
-    const firstClose = closeValues[0]?.close;
-    const mismatchedIntervals = closeValues.filter(
-      item => Math.abs((item.close - firstClose) / firstClose) > 0.0001
-    );
-
-    if (mismatchedIntervals.length > 0) {
-      console.error('Frontend - Close price mismatch:', mismatchedIntervals);
-      throw new Error('Close prices do not match across intervals');
-    }
-
-    logDataStructure(processedData);
     return processedData;
-  }, [formatOhlcBar, sortOhlcBars, logDataStructure]);
+  }, [formatOhlcBar, sortOhlcBars]);
 
   const getFutureIndex = useCallback((difficulty: string): number => {
     switch (difficulty) {
@@ -154,76 +195,99 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     }
   }, []);
 
+  const getBarsToRemove = useCallback((timeframe: string, days: number): number => {
+    // Calculate how many bars to remove for each timeframe based on number of days
+    const minutesInDay = 1440;
+    switch (timeframe) {
+      case '1m': return days * minutesInDay;        // 1440 minutes per day
+      case '5m': return days * (minutesInDay / 5);  // 288 5-min bars per day
+      case '15m': return days * (minutesInDay / 15); // 96 15-min bars per day
+      case '1h': return days * 24;                  // 24 1-hour bars per day
+      case '4h': return days * 6;                   // 6 4-hour bars per day
+      case 'D': return days;                        // 1 daily bar per day
+      case 'W': return Math.ceil(days / 7);         // Convert days to weeks
+      case 'M': return Math.ceil(days / 30);        // Approximate months
+      default: return days;
+    }
+  }, []);
+
   const generateChoices = useCallback((
     processedData: { [key: string]: OhlcBar[] },
     difficulty: string
   ): { choices: string[]; futurePrice: number } => {
-    const futureIndex = getFutureIndex(difficulty);
+    // Log the initial data lengths
+    console.log('Initial data lengths:', Object.fromEntries(
+      Object.entries(processedData).map(([interval, data]) => [interval, data.length])
+    ));
+
+    // Get the 91st day's close price as the answer
     const futurePrice = processedData['D'][processedData['D'].length - 1].close;
+    console.log('Future price (91st day):', futurePrice);
+
+    // Calculate days to remove based on difficulty
+    const daysToRemove = getFutureIndex(difficulty);
+    console.log('Days to remove based on difficulty:', {
+      difficulty,
+      daysToRemove
+    });
+
     const choices = generatePriceChoices(futurePrice);
 
+    // Remove the appropriate number of bars from each timeframe
     Object.keys(processedData).forEach((tf) => {
-      processedData[tf] = processedData[tf].slice(0, -futureIndex);
+      const beforeLength = processedData[tf].length;
+      const barsToRemove = getBarsToRemove(tf, daysToRemove);
+      processedData[tf] = processedData[tf].slice(0, -barsToRemove);
+      console.log(`${tf} data: ${beforeLength} bars -> ${processedData[tf].length} bars (removed ${barsToRemove} bars)`);
     });
 
     return { choices, futurePrice };
-  }, [getFutureIndex]);
+  }, [getFutureIndex, getBarsToRemove]);
 
   const generateNewRound = useCallback(() => {
-    console.log('Generating new round');
     setLoading(true);
     
     try {
-      const data = generateRandomData();
-      const processedData = processOhlcData(data);
-      const { choices, futurePrice } = generateChoices(processedData, difficulty);
+      // Get raw data
+      const rawData = generateRandomData();
+
+      // Calculate how many minute bars to remove based on difficulty
+      const daysToRemove = getFutureIndex(difficulty);
+      const minutesToRemove = daysToRemove * 1440; // 1440 minutes per day
+
+      // Store the future price before trimming
+      const futurePrice = rawData['D'][rawData['D'].length - 1].close;
+
+      // Remove future data from 1-minute data first
+      rawData['1m'] = rawData['1m'].slice(0, -minutesToRemove);
+
+      // Now process the trimmed data into all timeframes
+      const processedData = processOhlcData(rawData);
+      
+      // Generate choices using the stored future price
+      const choices = generatePriceChoices(futurePrice);
+
+      // Update game state
       updateGameState(processedData, choices, futurePrice);
     } catch (error) {
       console.error('Error generating new round:', error);
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty, processOhlcData, generateChoices]);
+  }, [difficulty, processOhlcData, getFutureIndex]);
 
   // Initialize game on mount
   useEffect(() => {
-    console.log('GameScreen initialization started');
-    
     if (!hasInitialized.current) {
-      console.log('Generating initial game data');
       generateNewRound();
       hasInitialized.current = true;
-    } else {
-      console.log('Skipping duplicate initialization');
     }
-
-    return () => {
-      console.log('GameScreen cleanup');
-    };
   }, [generateNewRound]);
 
-  // Add logging to track state changes
-  useEffect(() => {
-    console.log('Score changed:', score);
-  }, [score]);
-
-  useEffect(() => {
-    console.log('ShowResult changed:', showResult);
-  }, [showResult]);
-
   const handleNext = () => {
-    console.log('Next round button clicked');
-    console.log('Current attempt:', attempt);
-    
     if (attempt >= 5) {
-      console.log('Game over, returning to menu with score:', score);
       onGameEnd(score);
     } else {
-      console.log('Starting next round');
-      setAttempt((prev) => {
-        console.log('Incrementing attempt from', prev, 'to', prev + 1);
-        return prev + 1;
-      });
+      setAttempt((prev) => prev + 1);
       setShowResult(false);
       setSelectedChoice('');
       generateNewRound();
@@ -240,24 +304,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     handleNext();
   };
 
-  // Add test logging on mount
-  useEffect(
-    /* eslint-disable react-hooks/exhaustive-deps */
-    () => {
-      console.log('GameScreen mounted');
-      console.log('Initial state:', {
-        difficulty,
-        priceChoices,
-        selectedChoice,
-        correctPrice,
-        showResult,
-        score,
-        attempt
-      });
-    },
-    []
-    /* eslint-enable react-hooks/exhaustive-deps */
-  );
 
   if (loading) {
     return (
@@ -397,7 +443,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
           <RadioGroup 
             value={selectedChoice} 
             onChange={(e) => {
-              console.log('Radio selection changed:', e.target.value);
+              // console.log('Radio selection changed:', e.target.value);
               setSelectedChoice(e.target.value);
             }}
             sx={{
@@ -496,7 +542,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('Submit button clicked - raw event');
+              // console.log('Submit button clicked - raw event');
               console.log('Current state:', {
                 selectedChoice,
                 correctPrice,
@@ -512,11 +558,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
               setShowResult(true);
             }}
             onMouseDown={(e) => {
-              console.log('Button mousedown event');
               e.stopPropagation();
             }}
             onMouseUp={(e) => {
-              console.log('Button mouseup event');
               e.stopPropagation();
             }}
             size="large"
