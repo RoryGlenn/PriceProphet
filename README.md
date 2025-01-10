@@ -7,6 +7,14 @@ This React-based application challenges users to predict future stock closing pr
 - **Realistic Data Generation:**  
   Utilizes a custom `RandomOHLC` class to generate minute-level price data and then aggregates it into daily OHLC bars for display.
 
+- **Interactive Candlestick Chart:**  
+  - Professional-grade charting using TradingView's lightweight charts library
+  - Multiple timeframe analysis (1m, 5m, 15m, 1h, 4h, D, W, M)
+  - Optimized performance with smooth transitions between timeframes
+  - Clean, readable date formats with detailed tooltips
+  - Currency-formatted price axis for better readability
+  - Responsive design that adapts to screen size
+
 - **Difficulty Levels:**
 
   - **Easy:** Predict the closing price 1 day in the future.
@@ -22,9 +30,6 @@ This React-based application challenges users to predict future stock closing pr
 
 - **Dynamic Scoring and Feedback:**  
   Shows correct/wrong counts, calculates accuracy, uses a progress bar, provides encouraging messages, and compares performance to a hypothetical average. Also plots guess correctness over attempts.
-
-- **Interactive Candlestick Chart:**  
-  Displays historical prices using TradingView's lightweight charts library, helping users spot patterns before making their predictions.
 
 ## How It Works
 
@@ -72,7 +77,10 @@ npm run build  # or yarn build
    Choose a difficulty (Easy, Medium, Hard) and press **Start Game**.
 
 2. **Make a Guess:**  
-   Review the candlestick chart of the past 90 days. Select a predicted future closing price and submit.
+   - Review the candlestick chart of the past 90 days
+   - Use the timeframe buttons to analyze different time periods
+   - Hover over candlesticks to see detailed price information
+   - Select a predicted future closing price and submit
 
 3. **View Feedback:**  
    After submitting, see if you were correct. Continue until all attempts are completed.
@@ -85,6 +93,9 @@ npm run build  # or yarn build
 ```
 src/
   ├── components/     # React components
+  │   ├── ChartComponent.tsx    # Interactive candlestick chart
+  │   ├── GameScreen.tsx        # Main game interface
+  │   └── ...                   # Other components
   ├── types/         # TypeScript interfaces and types
   ├── utils/         # Helper functions and RandomOHLC class
   ├── hooks/         # Custom React hooks
@@ -96,11 +107,14 @@ src/
 
 - **Adjust Days:**  
   Modify `NUM_BARS` constant to simulate more or fewer days.
+
 - **Volatility and Drift:**  
   Adjust the random ranges for volatility and drift in `RandomOHLC` class to produce different price dynamics.
 
-- **UI Enhancements:**  
-  Modify the React components and styles to customize the look and feel.
+- **Chart Appearance:**  
+  - Modify colors in `ChartComponent` for different candlestick styles
+  - Adjust bar spacing and time formats for different viewing preferences
+  - Customize tooltip formats for different information display
 
 ## Contributing
 
