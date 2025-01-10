@@ -155,6 +155,8 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
       },
     });
 
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const setDataInChunks = (chartData: OhlcBar[]) => {
       const CHUNK_SIZE = 5000;
       let currentIndex = 0;
@@ -169,7 +171,7 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
           }
           currentIndex += CHUNK_SIZE;
           if (currentIndex < chartData.length) {
-            setTimeout(processNextChunk, 0);
+            timeoutId = setTimeout(processNextChunk, 0);
           } else {
             chart.timeScale().fitContent();
           }
@@ -195,6 +197,9 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
     window.addEventListener('resize', handleResize);
 
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };

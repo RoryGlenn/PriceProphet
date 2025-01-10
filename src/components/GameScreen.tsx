@@ -14,7 +14,7 @@ import { ChartComponent } from './ChartComponent';
 import { RandomOHLC } from '../random_ohlc';
 import { OhlcBar, OhlcRow } from '../types';
 import { Time } from 'lightweight-charts';
-import { generatePriceChoices } from '../utils/priceUtils';
+import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
 import { DateTime } from 'luxon';
 
 interface GameScreenProps {
@@ -68,7 +68,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   ) => {
     setHistoricalData(processedData);
     setPriceChoices(choices);
-    setCorrectPrice(futurePrice.toFixed(2));
+    setCorrectPrice(formatPrice(futurePrice));
     setSelectedChoice('');
     setShowResult(false);
     setLoading(false);
@@ -272,16 +272,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     } catch (error) {
       console.error('Error generating new round:', error);
       setLoading(false);
+      // Show error message to user
+      alert('An error occurred while generating the game data. Please try again.');
     }
   }, [difficulty, processOhlcData, getFutureIndex]);
 
-  // Initialize game on mount
+  // Initialize game on mount or when difficulty changes
   useEffect(() => {
-    if (!hasInitialized.current) {
-      generateNewRound();
-      hasInitialized.current = true;
-    }
-  }, [generateNewRound]);
+    generateNewRound();
+    hasInitialized.current = true;
+  }, [generateNewRound, difficulty]);
 
   const handleNext = () => {
     if (attempt >= 5) {

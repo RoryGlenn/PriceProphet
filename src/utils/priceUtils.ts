@@ -7,6 +7,20 @@
  *********************************************************************/
 
 /**
+ * Format a number as a currency string with consistent formatting.
+ * @param price The price to format
+ * @returns Formatted price string
+ */
+export function formatPrice(price: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price);
+}
+
+/**
  * Generate an array of price choices for the prediction game.
  * Creates four price options:
  * 1. The actual future price (correct answer)
@@ -20,8 +34,8 @@
  * @returns Array of price strings, with the actual price at a random position
  */
 export function generatePriceChoices(actualPrice: number): string[] {
-    // Format the actual price to 2 decimal places
-    const formattedActual = actualPrice.toFixed(2);
+    // Format the actual price
+    const formattedActual = formatPrice(actualPrice);
     
     /*
      * Generate three alternative prices by applying random percentage changes.
@@ -45,7 +59,7 @@ export function generatePriceChoices(actualPrice: number): string[] {
             ? 1 + percentChange / 100 
             : 1 - percentChange / 100;
         
-        const altPrice = (actualPrice * multiplier).toFixed(2);
+        const altPrice = formatPrice(actualPrice * multiplier);
         alternatives.push(altPrice);
     }
 
