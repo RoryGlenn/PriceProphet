@@ -1,3 +1,10 @@
+/*********************************************************************
+ * GameScreen.tsx
+ * 
+ * Main game interface component that handles the price prediction gameplay.
+ * Manages game state, data generation, user interactions, and scoring.
+ *********************************************************************/
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
@@ -15,34 +22,70 @@ import { RandomOHLC } from '../random_ohlc';
 import { OhlcBar, OhlcRow } from '../types';
 import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
-import { DateTime } from 'luxon';
 
+/**
+ * Props for the GameScreen component
+ * 
+ * @interface GameScreenProps
+ * @property {string} difficulty - Selected difficulty level (Easy, Medium, Hard)
+ * @property {Function} onReturnToWelcome - Callback to navigate back to welcome screen
+ */
 interface GameScreenProps {
+  /** Selected difficulty level */
   difficulty: string;
-  onGameEnd: (score: { right: number; wrong: number }) => void;
+  /** Callback function to return to welcome screen */
+  onReturnToWelcome: () => void;
 }
 
 /**
- * GameScreen component handles the main game logic and UI.
- * Manages game state, data generation, and user interactions.
+ * Main game interface component.
+ * Handles the core game logic including:
+ * - Data generation using RandomOHLC
+ * - Game state management
+ * - Score tracking
+ * - User interaction processing
+ * 
+ * @component
+ * @param {GameScreenProps} props - Component props
+ * @param {string} props.difficulty - Selected difficulty level
+ * @param {Function} props.onReturnToWelcome - Callback to return to welcome screen
  */
-export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd }) => {
-  // Game state
+export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onReturnToWelcome }) => {
+  // Game state variables
+  /** Historical price data organized by timeframe */
   const [historicalData, setHistoricalData] = useState<{ [key: string]: OhlcBar[] }>({});
+  /** Available price choices for prediction */
   const [priceChoices, setPriceChoices] = useState<string[]>([]);
+  /** Currently selected price choice */
   const [selectedChoice, setSelectedChoice] = useState<string>('');
+  /** Loading state for data generation */
   const [loading, setLoading] = useState(true);
+  /** Game score tracking */
   const [score, setScore] = useState({ right: 0, wrong: 0 });
+  /** Current attempt number (max 5) */
   const [attempt, setAttempt] = useState(1);
+  /** Whether to show the result of the current guess */
   const [showResult, setShowResult] = useState(false);
+  /** The correct price for the current round */
   const [correctPrice, setCorrectPrice] = useState<string>('');
   
-  // Ref to track initialization
+  /** Ref to track component initialization */
   const hasInitialized = React.useRef(false);
 
   /**
-   * Generate random OHLC data using RandomOHLC class.
-   * Creates 90 days of price data with random volatility and drift.
+   * Generates random OHLC (Open, High, Low, Close) price data.
+   * Creates 91 days of price data with random volatility and drift parameters.
+   * Uses the RandomOHLC class to generate realistic-looking price movements.
+   * 
+   * @returns {Object} An object containing OHLC data organized by timeframe
+   * @property {OhlcRow[]} 1m - One-minute interval data
+   * @property {OhlcRow[]} D - Daily interval data
+   * 
+   * @remarks
+   * - Volatility is randomly set between 1-3
+   * - Drift is randomly set between 1-3
+   * - Start price is fixed at 10000
+   * - Generates 91 days to include the future price day
    */
   const generateRandomData = () => {
     const volatility = Math.random() * 2 + 1;
@@ -59,7 +102,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   };
 
   /**
-   * Update game state with new round data.
+   * Updates the game state with new round data.
+   * Resets the game state for a new round by:
+   * - Setting the historical data for the chart
+   * - Setting up the price choices for the player
+   * - Setting the correct price
+   * - Resetting selection and result states
+   * - Turning off loading state
+   * 
+   * @param processedData - Processed OHLC data organized by timeframe
+   * @param choices - Array of price choices to display to the player
+   * @param futurePrice - The correct future price for this round
    */
   const updateGameState = (
     processedData: { [key: string]: OhlcBar[] },
@@ -101,27 +154,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   // }, []);
 
   /**
-   * Converts raw OHLC data from RandomOHLC into a format suitable for the charting library.
+   * Processes raw OHLC data into timeframe groups.
+   * Takes the 1-minute data and aggregates it into larger timeframes (5m, 15m, 1h, etc.).
+   * Handles partial periods appropriately, especially for weekly and monthly intervals.
    * 
-   * @param data Raw data from RandomOHLC
-   *    Structure: { [timeframe: string]: OhlcRow[] }
-   *    OhlcRow = {
-   *      timestamp: number;  // Unix timestamp in seconds
-   *      open: number;
-   *      high: number;
-   *      low: number;
-   *      close: number;
-   *    }
-   * 
-   * @returns Processed data for the chart
-   *    Structure: { [timeframe: string]: OhlcBar[] }
-   *    OhlcBar = {
-   *      time: Time;  // lightweight-charts specific time format
-   *      open: number;
-   *      high: number;
-   *      low: number;
-   *      close: number;
-   *    }
+   * @param data Raw OHLC data organized by timeframe
+   * @returns Processed data ready for chart display
    */
   const processOhlcData = useCallback((data: { [key: string]: OhlcRow[] }) => {
     // Get the trimmed 1-minute data
@@ -174,14 +212,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
       }));
     });
 
-    // Log the data structure for verification
-    console.log('Processed data lengths:', Object.fromEntries(
-      Object.entries(processedData).map(([interval, data]) => [interval, data.length])
-    ));
+    // // Log the data structure for verification
+    // console.log('Processed data lengths:', Object.fromEntries(
+    //   Object.entries(processedData).map(([interval, data]) => [interval, data.length])
+    // ));
 
     return processedData;
   }, [formatOhlcBar, sortOhlcBars]);
 
+  /**
+   * Determines how many days into the future to predict based on difficulty.
+   * - Easy: 1 day
+   * - Medium: 7 days
+   * - Hard: 30 days
+   * 
+   * @param difficulty Selected game difficulty
+   * @returns Number of days to look ahead
+   */
   const getFutureIndex = useCallback((difficulty: string): number => {
     switch (difficulty) {
       case 'Easy':
@@ -195,55 +242,81 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     }
   }, []);
 
-  const getBarsToRemove = useCallback((timeframe: string, days: number): number => {
-    // Calculate how many bars to remove for each timeframe based on number of days
-    const minutesInDay = 1440;
-    switch (timeframe) {
-      case '1m': return days * minutesInDay;        // 1440 minutes per day
-      case '5m': return days * (minutesInDay / 5);  // 288 5-min bars per day
-      case '15m': return days * (minutesInDay / 15); // 96 15-min bars per day
-      case '1h': return days * 24;                  // 24 1-hour bars per day
-      case '4h': return days * 6;                   // 6 4-hour bars per day
-      case 'D': return days;                        // 1 daily bar per day
-      case 'W': return Math.ceil(days / 7);         // Convert days to weeks
-      case 'M': return Math.ceil(days / 30);        // Approximate months
-      default: return days;
-    }
-  }, []);
+  /**
+   * Calculates how many bars to remove from each timeframe based on the number of days.
+   * Ensures consistent data removal across all timeframes to hide future data.
+   * 
+   * @param timeframe Current timeframe (1m, 5m, 15m, etc.)
+   * @param days Number of days to remove
+   * @returns Number of bars to remove for the given timeframe
+   */
+  // const getBarsToRemove = useCallback((timeframe: string, days: number): number => {
+  //   // Calculate how many bars to remove for each timeframe based on number of days
+  //   const minutesInDay = 1440;
+  //   switch (timeframe) {
+  //     case '1m': return days * minutesInDay;        // 1440 minutes per day
+  //     case '5m': return days * (minutesInDay / 5);  // 288 5-min bars per day
+  //     case '15m': return days * (minutesInDay / 15); // 96 15-min bars per day
+  //     case '1h': return days * 24;                  // 24 1-hour bars per day
+  //     case '4h': return days * 6;                   // 6 4-hour bars per day
+  //     case 'D': return days;                        // 1 daily bar per day
+  //     case 'W': return Math.ceil(days / 7);         // Convert days to weeks
+  //     case 'M': return Math.ceil(days / 30);        // Approximate months
+  //     default: return days;
+  //   }
+  // }, []);
 
-  const generateChoices = useCallback((
-    processedData: { [key: string]: OhlcBar[] },
-    difficulty: string
-  ): { choices: string[]; futurePrice: number } => {
-    // Log the initial data lengths
-    console.log('Initial data lengths:', Object.fromEntries(
-      Object.entries(processedData).map(([interval, data]) => [interval, data.length])
-    ));
+  /**
+   * Generates price choices for the prediction game.
+   * Takes the future price and creates a set of plausible options around it.
+   * Also handles data trimming to hide future data from the player.
+   * 
+   * @param processedData OHLC data organized by timeframe
+   * @param difficulty Current game difficulty
+   * @returns Object containing price choices and the correct future price
+   */
+  // const generateChoices = useCallback((
+  //   processedData: { [key: string]: OhlcBar[] },
+  //   difficulty: string
+  // ): { choices: string[]; futurePrice: number } => {
+  //   // Log the initial data lengths
+  //   console.log('Initial data lengths:', Object.fromEntries(
+  //     Object.entries(processedData).map(([interval, data]) => [interval, data.length])
+  //   ));
 
-    // Get the 91st day's close price as the answer
-    const futurePrice = processedData['D'][processedData['D'].length - 1].close;
-    console.log('Future price (91st day):', futurePrice);
+  //   // Get the 91st day's close price as the answer
+  //   const futurePrice = processedData['D'][processedData['D'].length - 1].close;
+  //   console.log('Future price (91st day):', futurePrice);
 
-    // Calculate days to remove based on difficulty
-    const daysToRemove = getFutureIndex(difficulty);
-    console.log('Days to remove based on difficulty:', {
-      difficulty,
-      daysToRemove
-    });
+  //   // Calculate days to remove based on difficulty
+  //   const daysToRemove = getFutureIndex(difficulty);
+  //   console.log('Days to remove based on difficulty:', {
+  //     difficulty,
+  //     daysToRemove
+  //   });
 
-    const choices = generatePriceChoices(futurePrice);
+  //   const choices = generatePriceChoices(futurePrice);
 
-    // Remove the appropriate number of bars from each timeframe
-    Object.keys(processedData).forEach((tf) => {
-      const beforeLength = processedData[tf].length;
-      const barsToRemove = getBarsToRemove(tf, daysToRemove);
-      processedData[tf] = processedData[tf].slice(0, -barsToRemove);
-      console.log(`${tf} data: ${beforeLength} bars -> ${processedData[tf].length} bars (removed ${barsToRemove} bars)`);
-    });
+  //   // Remove the appropriate number of bars from each timeframe
+  //   Object.keys(processedData).forEach((tf) => {
+  //     const beforeLength = processedData[tf].length;
+  //     const barsToRemove = getBarsToRemove(tf, daysToRemove);
+  //     processedData[tf] = processedData[tf].slice(0, -barsToRemove);
+  //     console.log(`${tf} data: ${beforeLength} bars -> ${processedData[tf].length} bars (removed ${barsToRemove} bars)`);
+  //   });
 
-    return { choices, futurePrice };
-  }, [getFutureIndex, getBarsToRemove]);
+  //   return { choices, futurePrice };
+  // }, [getFutureIndex, getBarsToRemove]);
 
+  /**
+   * Generates a new round of the game.
+   * Creates new random price data, processes it into timeframes,
+   * and sets up the choices for the player.
+   * 
+   * Handles error cases and updates loading state appropriately.
+   * 
+   * @throws Error if data generation or processing fails
+   */
   const generateNewRound = useCallback(() => {
     setLoading(true);
     
@@ -283,9 +356,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     hasInitialized.current = true;
   }, [generateNewRound, difficulty]);
 
+  /**
+   * Handles the "Next" button click.
+   * Either starts a new round or ends the game after 5 attempts.
+   */
   const handleNext = () => {
     if (attempt >= 5) {
-      onGameEnd(score);
+      onReturnToWelcome();
     } else {
       setAttempt((prev) => prev + 1);
       setShowResult(false);
@@ -294,16 +371,62 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     }
   };
 
+  /**
+   * Handles returning to the main menu.
+   * Cleans up game state and navigates back to welcome screen.
+   * Prevents default event behavior and event bubbling.
+   * 
+   * @param event - Click event from the button
+   * @see onReturnToWelcome
+   */
   const handleBackToMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    onGameEnd(score);
+    onReturnToWelcome();
   };
 
+  /**
+   * Handles the user's price prediction submission.
+   * Validates the choice and updates the game state accordingly.
+   */
+  const handleSubmit = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    console.log('Current state:', {
+      selectedChoice,
+      correctPrice,
+      showResult,
+      score
+    });
+    
+    if (selectedChoice === correctPrice) {
+      setScore(prev => ({ ...prev, right: prev.right + 1 }));
+    } else {
+      setScore(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+    }
+    setShowResult(true);
+  }, [selectedChoice, correctPrice, showResult, score]);
+
+  /**
+   * Handles the next round button click.
+   * Prevents event bubbling and initiates the next round.
+   * 
+   * @param event - Click event from the button
+   */
   const handleNextClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     handleNext();
   };
 
+  /**
+   * Handles radio button selection change for price choices.
+   * Updates the selected choice in the component state.
+   * 
+   * @param e - Change event from the radio button group
+   */
+  const handleChoiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedChoice(e.target.value);
+  };
 
   if (loading) {
     return (
@@ -442,10 +565,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
           </Typography>
           <RadioGroup 
             value={selectedChoice} 
-            onChange={(e) => {
-              // console.log('Radio selection changed:', e.target.value);
-              setSelectedChoice(e.target.value);
-            }}
+            onChange={handleChoiceChange}
             sx={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -539,24 +659,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
         ) : (
           <Button
             variant="contained"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              // console.log('Submit button clicked - raw event');
-              console.log('Current state:', {
-                selectedChoice,
-                correctPrice,
-                showResult,
-                score
-              });
-              
-              if (selectedChoice === correctPrice) {
-                setScore(prev => ({ ...prev, right: prev.right + 1 }));
-              } else {
-                setScore(prev => ({ ...prev, wrong: prev.wrong + 1 }));
-              }
-              setShowResult(true);
-            }}
+            onClick={handleSubmit}
             onMouseDown={(e) => {
               e.stopPropagation();
             }}

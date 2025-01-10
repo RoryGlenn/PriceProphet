@@ -10,7 +10,7 @@
  *********************************************************************/
 
 import { DateTime } from 'luxon';
-import { IDataFrame, DataFrame } from 'data-forge';
+import { OhlcRow } from './types';
 
 /**
  * Dictionary containing OHLC data for each time interval.
@@ -19,17 +19,6 @@ import { IDataFrame, DataFrame } from 'data-forge';
  */
 interface TimeIntervalDict {
   [timeinterval: string]: OhlcRow[];
-}
-
-/**
- * Interface representing a single OHLC (Open, High, Low, Close) data row.
- */
-interface OhlcRow {
-  timestamp: number; // Unix timestamp in seconds
-  open: number; // Opening price
-  high: number; // Highest price
-  low: number; // Lowest price
-  close: number; // Closing price
 }
 
 /**
@@ -120,7 +109,7 @@ export class RandomOHLC {
       }
     }
 
-    console.info(`Date range: ${dates[0].toISO()} to ${dates[dates.length - 1].toISO()}`);
+    // console.info(`Date range: ${dates[0].toISO()} to ${dates[dates.length - 1].toISO()}`);
     return dates;
   }
 
