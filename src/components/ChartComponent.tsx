@@ -69,6 +69,16 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
         vertLines: { color: 'rgba(43, 43, 67, 0.5)' },
         horzLines: { color: 'rgba(43, 43, 67, 0.5)' },
       },
+      localization: {
+        priceFormatter: (price: number) => {
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(price);
+        },
+      },
       timeScale: {
         timeVisible: interval.endsWith('m') || interval.endsWith('h'),
         secondsVisible: false,
