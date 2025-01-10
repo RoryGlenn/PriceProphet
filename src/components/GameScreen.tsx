@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Paper,
@@ -40,42 +40,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   // Ref to track initialization
   const hasInitialized = React.useRef(false);
 
-  // Initialize game on mount
-  useEffect(() => {
-    console.log('GameScreen initialization started');
-    
-    if (!hasInitialized.current) {
-      console.log('Generating initial game data');
-      generateNewRound();
-      hasInitialized.current = true;
-    } else {
-      console.log('Skipping duplicate initialization');
-    }
-
-    return () => {
-      console.log('GameScreen cleanup');
-    };
-  }, []);
-
-  /**
-   * Generate a new round of the game.
-   * Creates new price data and updates game state.
-   */
-  const generateNewRound = () => {
-    console.log('Generating new round');
-    setLoading(true);
-    
-    try {
-      const data = generateRandomData();
-      const processedData = processOhlcData(data);
-      const { choices, futurePrice } = generateChoices(processedData, difficulty);
-      updateGameState(processedData, choices, futurePrice);
-    } catch (error) {
-      console.error('Error generating new round:', error);
-      setLoading(false);
-    }
-  };
-
   /**
    * Generate random OHLC data using RandomOHLC class.
    * Creates 90 days of price data with random volatility and drift.
@@ -96,148 +60,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   };
 
   /**
-   * Process raw OHLC data into format required by chart component.
-   * Handles different time intervals and timestamp formats.
-   *
-   * @param data Raw OHLC data from RandomOHLC
-   * @returns Processed data suitable for charting
-   */
-  const processOhlcData = (data: { [key: string]: OhlcRow[] }) => {
-    /*
-     * We support multiple time intervals from 1min to 1M.
-     * Each interval needs its own array of properly formatted OHLC bars.
-     * The chart component expects specific time formats:
-     * - For intraday (1min to 4H): Unix timestamps
-     * - For daily and above: 'yyyy-MM-dd' strings
-     */
-    const timeIntervals = ['1min', '5min', '15min', '1H', '4H', '1D', '1W', '1M'];
-    const processedData: { [key: string]: OhlcBar[] } = {};
-
-    timeIntervals.forEach((tf) => {
-      processedData[tf] = data[tf]
-        .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, tf))
-        .sort((a: OhlcBar, b: OhlcBar) => sortOhlcBars(a, b));
-    });
-
-    logDataStructure(processedData);
-    return processedData;
-  };
-
-  /**
-   * Format an OHLC bar for the chart component.
-   * Handles different timestamp formats based on time interval.
-   *
-   * @param bar Raw OHLC bar
-   * @param timeInterval Time interval of the data
-   * @returns Formatted OHLC bar
-   */
-  const formatOhlcBar = (bar: OhlcRow, timeInterval: string): OhlcBar => {
-    /*
-     * The chart library (lightweight-charts) requires different time formats:
-     * 1. For intraday data (1min to 4H): Use Unix timestamps
-     *    - Allows precise time display including hours and minutes
-     *    - Maintains exact time spacing between bars
-     * 
-     * 2. For daily and above (1D, 1W, 1M): Use 'yyyy-MM-dd' strings
-     *    - Automatically handles business days
-     *    - Properly spaces bars for weekends and holidays
-     */
-    const date = DateTime.fromSeconds(bar.timestamp);
-    
-    if (timeInterval.includes('min') || timeInterval.includes('H')) {
-      return {
-        time: bar.timestamp as Time,
-        open: bar.open,
-        high: bar.high,
-        low: bar.low,
-        close: bar.close,
-      };
-    }
-    
-    return {
-      time: date.toFormat('yyyy-MM-dd') as Time,
-      open: bar.open,
-      high: bar.high,
-      low: bar.low,
-      close: bar.close,
-    };
-  };
-
-  /**
-   * Sort OHLC bars by time.
-   * Handles both timestamp and date string formats.
-   */
-  const sortOhlcBars = (a: OhlcBar, b: OhlcBar): number =>
-    typeof a.time === 'number' ? a.time - (b.time as number) : a.time < b.time ? -1 : 1;
-
-  /**
-   * Log data structure for debugging.
-   * Shows available time intervals and number of bars.
-   */
-  const logDataStructure = (processedData: { [key: string]: OhlcBar[] }) => {
-    console.log('Available time intervals:', Object.keys(processedData));
-    console.log('Data structure:', {
-      timeIntervals: Object.keys(processedData),
-      sampleSizes: Object.entries(processedData).map(([tf, data]) => `${tf}: ${data.length} bars`),
-    });
-  };
-
-  /**
-   * Generate price choices for the game round.
-   * Removes future data based on difficulty level.
-   *
-   * @param processedData Processed OHLC data
-   * @param difficulty Game difficulty level
-   * @returns Price choices and correct future price
-   */
-  const generateChoices = (
-    processedData: { [key: string]: OhlcBar[] },
-    difficulty: string
-  ): { choices: string[]; futurePrice: number } => {
-    /*
-     * Game mechanics for price prediction:
-     * 1. Get the prediction timeframe based on difficulty:
-     *    - Easy: 1 day into the future
-     *    - Medium: 1 week into the future
-     *    - Hard: 1 month into the future
-     * 
-     * 2. Take the last price from the daily data as the "future" price
-     * 
-     * 3. Remove the corresponding amount of data from all timeframes
-     *    to hide the future prices from the player
-     */
-    const futureIndex = getFutureIndex(difficulty);
-    const futurePrice = processedData['1D'][processedData['1D'].length - 1].close;
-    const choices = generatePriceChoices(futurePrice);
-
-    // Remove future data from all time intervals to maintain consistency
-    Object.keys(processedData).forEach((tf) => {
-      processedData[tf] = processedData[tf].slice(0, -futureIndex);
-    });
-
-    return { choices, futurePrice };
-  };
-
-  /**
-   * Get future index based on difficulty level.
-   * Easy: 1 day, Medium: 7 days, Hard: 30 days
-   */
-  const getFutureIndex = (difficulty: string): number => {
-    switch (difficulty) {
-      case 'Easy':
-        return 1;
-      case 'Medium':
-        return 7;
-      case 'Hard':
-        return 30;
-      default:
-        return 1;
-    }
-  };
-
-  /**
    * Update game state with new round data.
-   * Resets selection and result states.
    */
   const updateGameState = (
     processedData: { [key: string]: OhlcBar[] },
@@ -253,66 +76,131 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     setLoading(false);
   };
 
-  const debugWrapper = (fn: Function, name: string) => {
-    return (...args: any[]) => {
-      console.log(`Entering ${name}`);
-      try {
-        const result = fn(...args);
-        console.log(`Exiting ${name}`);
-        return result;
-      } catch (error) {
-        console.error(`Error in ${name}:`, error);
-        throw error;
-      }
+  const formatOhlcBar = useCallback((bar: OhlcRow, timeInterval: string): OhlcBar => {
+    // Always use Unix timestamp for time
+    return {
+      time: bar.timestamp as Time,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
     };
-  };
+  }, []);
 
-  const handleSubmit = debugWrapper(() => {
-    console.log('Submit button clicked');
-    console.log('Current game state:', {
-      selectedChoice,
-      correctPrice,
-      priceChoices,
-      showResult,
-      score,
-      attempt
+  const sortOhlcBars = useCallback((a: OhlcBar, b: OhlcBar): number =>
+    typeof a.time === 'number' ? a.time - (b.time as number) : a.time < b.time ? -1 : 1
+  , []);
+
+  const logDataStructure = useCallback((processedData: { [key: string]: OhlcBar[] }) => {
+    console.log('Available time intervals:', Object.keys(processedData));
+    console.log('Data structure:', {
+      timeIntervals: Object.keys(processedData),
+      sampleSizes: Object.entries(processedData).map(([tf, data]) => `${tf}: ${data.length} bars`),
     });
+  }, []);
+
+  const processOhlcData = useCallback((data: { [key: string]: OhlcRow[] }) => {
+    const displayIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'] as const;
+    const processedData: { [key: string]: OhlcBar[] } = {};
+
+    displayIntervals.forEach((tf) => {
+      processedData[tf] = data[tf]
+        .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, tf))
+        .sort((a: OhlcBar, b: OhlcBar) => sortOhlcBars(a, b));
+    });
+
+    // Log first date for each interval
+    const firstDates = Object.entries(processedData).map(([interval, data]) => ({
+      interval,
+      firstDate: DateTime.fromSeconds(data[0]?.time as number).toISO(),
+      timestamp: data[0]?.time
+    }));
+
+    console.log('First dates for each interval:', firstDates);
+
+    // Validate close prices
+    const closeValues = Object.entries(processedData).map(([interval, data]) => ({
+      interval,
+      close: data[data.length - 1]?.close,
+      timestamp: data[data.length - 1]?.time
+    }));
+
+    console.log('Frontend - Final close prices:', closeValues);
+
+    const firstClose = closeValues[0]?.close;
+    const mismatchedIntervals = closeValues.filter(
+      item => Math.abs((item.close - firstClose) / firstClose) > 0.0001
+    );
+
+    if (mismatchedIntervals.length > 0) {
+      console.error('Frontend - Close price mismatch:', mismatchedIntervals);
+      throw new Error('Close prices do not match across intervals');
+    }
+
+    logDataStructure(processedData);
+    return processedData;
+  }, [formatOhlcBar, sortOhlcBars, logDataStructure]);
+
+  const getFutureIndex = useCallback((difficulty: string): number => {
+    switch (difficulty) {
+      case 'Easy':
+        return 1;
+      case 'Medium':
+        return 7;
+      case 'Hard':
+        return 30;
+      default:
+        return 1;
+    }
+  }, []);
+
+  const generateChoices = useCallback((
+    processedData: { [key: string]: OhlcBar[] },
+    difficulty: string
+  ): { choices: string[]; futurePrice: number } => {
+    const futureIndex = getFutureIndex(difficulty);
+    const futurePrice = processedData['D'][processedData['D'].length - 1].close;
+    const choices = generatePriceChoices(futurePrice);
+
+    Object.keys(processedData).forEach((tf) => {
+      processedData[tf] = processedData[tf].slice(0, -futureIndex);
+    });
+
+    return { choices, futurePrice };
+  }, [getFutureIndex]);
+
+  const generateNewRound = useCallback(() => {
+    console.log('Generating new round');
+    setLoading(true);
     
-    if (!selectedChoice) {
-      console.warn('No choice selected, returning early');
-      return;
-    }
-
     try {
-      console.log('Processing submission...');
-      if (selectedChoice === correctPrice) {
-        console.log('Correct answer! Selected:', selectedChoice, 'Correct:', correctPrice);
-        setScore((prev) => {
-          const newScore = { ...prev, right: prev.right + 1 };
-          console.log('Updated score:', newScore);
-          return newScore;
-        });
-      } else {
-        console.log('Wrong answer. Selected:', selectedChoice, 'Correct:', correctPrice);
-        setScore((prev) => {
-          const newScore = { ...prev, wrong: prev.wrong + 1 };
-          console.log('Updated score:', newScore);
-          return newScore;
-        });
-      }
-      console.log('Setting showResult to true');
-      setShowResult(true);
-      console.log('Submission processing complete');
+      const data = generateRandomData();
+      const processedData = processOhlcData(data);
+      const { choices, futurePrice } = generateChoices(processedData, difficulty);
+      updateGameState(processedData, choices, futurePrice);
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
+      console.error('Error generating new round:', error);
+      setLoading(false);
     }
-  }, 'handleSubmit');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [difficulty, processOhlcData, generateChoices]);
 
-  const handleSubmitClick = debugWrapper((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    console.log('Submit button clicked - direct handler');
-    handleSubmit();
-  }, 'handleSubmitClick');
+  // Initialize game on mount
+  useEffect(() => {
+    console.log('GameScreen initialization started');
+    
+    if (!hasInitialized.current) {
+      console.log('Generating initial game data');
+      generateNewRound();
+      hasInitialized.current = true;
+    } else {
+      console.log('Skipping duplicate initialization');
+    }
+
+    return () => {
+      console.log('GameScreen cleanup');
+    };
+  }, [generateNewRound]);
 
   // Add logging to track state changes
   useEffect(() => {
@@ -353,18 +241,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   };
 
   // Add test logging on mount
-  useEffect(() => {
-    console.log('GameScreen mounted');
-    console.log('Initial state:', {
-      difficulty,
-      priceChoices,
-      selectedChoice,
-      correctPrice,
-      showResult,
-      score,
-      attempt
-    });
-  }, []);
+  useEffect(
+    /* eslint-disable react-hooks/exhaustive-deps */
+    () => {
+      console.log('GameScreen mounted');
+      console.log('Initial state:', {
+        difficulty,
+        priceChoices,
+        selectedChoice,
+        correctPrice,
+        showResult,
+        score,
+        attempt
+      });
+    },
+    []
+    /* eslint-enable react-hooks/exhaustive-deps */
+  );
 
   if (loading) {
     return (
@@ -481,7 +374,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
           position: 'relative',
           zIndex: 1
         }}>
-          <ChartComponent data={historicalData} defaultInterval="1D" />
+          <ChartComponent data={historicalData} defaultInterval="D" />
         </Box>
 
         <Box sx={{ 

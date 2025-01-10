@@ -35,39 +35,6 @@ exports.GameScreen = function (_a) {
     var _j = react_1.useState(''), correctPrice = _j[0], setCorrectPrice = _j[1];
     // Ref to track initialization
     var hasInitialized = react_1["default"].useRef(false);
-    // Initialize game on mount
-    react_1.useEffect(function () {
-        console.log('GameScreen initialization started');
-        if (!hasInitialized.current) {
-            console.log('Generating initial game data');
-            generateNewRound();
-            hasInitialized.current = true;
-        }
-        else {
-            console.log('Skipping duplicate initialization');
-        }
-        return function () {
-            console.log('GameScreen cleanup');
-        };
-    }, []);
-    /**
-     * Generate a new round of the game.
-     * Creates new price data and updates game state.
-     */
-    var generateNewRound = function () {
-        console.log('Generating new round');
-        setLoading(true);
-        try {
-            var data = generateRandomData();
-            var processedData = processOhlcData(data);
-            var _a = generateChoices(processedData, difficulty), choices = _a.choices, futurePrice = _a.futurePrice;
-            updateGameState(processedData, choices, futurePrice);
-        }
-        catch (error) {
-            console.error('Error generating new round:', error);
-            setLoading(false);
-        }
-    };
     /**
      * Generate random OHLC data using RandomOHLC class.
      * Creates 90 days of price data with random volatility and drift.
@@ -85,137 +52,7 @@ exports.GameScreen = function (_a) {
         return randOHLC.generateOhlcData();
     };
     /**
-     * Process raw OHLC data into format required by chart component.
-     * Handles different time intervals and timestamp formats.
-     *
-     * @param data Raw OHLC data from RandomOHLC
-     * @returns Processed data suitable for charting
-     */
-    var processOhlcData = function (data) {
-        /*
-         * We support multiple time intervals from 1min to 1M.
-         * Each interval needs its own array of properly formatted OHLC bars.
-         * The chart component expects specific time formats:
-         * - For intraday (1min to 4H): Unix timestamps
-         * - For daily and above: 'yyyy-MM-dd' strings
-         */
-        var timeIntervals = ['1min', '5min', '15min', '1H', '4H', '1D', '1W', '1M'];
-        var processedData = {};
-        timeIntervals.forEach(function (tf) {
-            processedData[tf] = data[tf]
-                .map(function (bar) { return formatOhlcBar(bar, tf); })
-                .sort(function (a, b) { return sortOhlcBars(a, b); });
-        });
-        logDataStructure(processedData);
-        return processedData;
-    };
-    /**
-     * Format an OHLC bar for the chart component.
-     * Handles different timestamp formats based on time interval.
-     *
-     * @param bar Raw OHLC bar
-     * @param timeInterval Time interval of the data
-     * @returns Formatted OHLC bar
-     */
-    var formatOhlcBar = function (bar, timeInterval) {
-        /*
-         * The chart library (lightweight-charts) requires different time formats:
-         * 1. For intraday data (1min to 4H): Use Unix timestamps
-         *    - Allows precise time display including hours and minutes
-         *    - Maintains exact time spacing between bars
-         *
-         * 2. For daily and above (1D, 1W, 1M): Use 'yyyy-MM-dd' strings
-         *    - Automatically handles business days
-         *    - Properly spaces bars for weekends and holidays
-         */
-        var date = luxon_1.DateTime.fromSeconds(bar.timestamp);
-        if (timeInterval.includes('min') || timeInterval.includes('H')) {
-            return {
-                time: bar.timestamp,
-                open: bar.open,
-                high: bar.high,
-                low: bar.low,
-                close: bar.close
-            };
-        }
-        return {
-            time: date.toFormat('yyyy-MM-dd'),
-            open: bar.open,
-            high: bar.high,
-            low: bar.low,
-            close: bar.close
-        };
-    };
-    /**
-     * Sort OHLC bars by time.
-     * Handles both timestamp and date string formats.
-     */
-    var sortOhlcBars = function (a, b) {
-        return typeof a.time === 'number' ? a.time - b.time : a.time < b.time ? -1 : 1;
-    };
-    /**
-     * Log data structure for debugging.
-     * Shows available time intervals and number of bars.
-     */
-    var logDataStructure = function (processedData) {
-        console.log('Available time intervals:', Object.keys(processedData));
-        console.log('Data structure:', {
-            timeIntervals: Object.keys(processedData),
-            sampleSizes: Object.entries(processedData).map(function (_a) {
-                var tf = _a[0], data = _a[1];
-                return tf + ": " + data.length + " bars";
-            })
-        });
-    };
-    /**
-     * Generate price choices for the game round.
-     * Removes future data based on difficulty level.
-     *
-     * @param processedData Processed OHLC data
-     * @param difficulty Game difficulty level
-     * @returns Price choices and correct future price
-     */
-    var generateChoices = function (processedData, difficulty) {
-        /*
-         * Game mechanics for price prediction:
-         * 1. Get the prediction timeframe based on difficulty:
-         *    - Easy: 1 day into the future
-         *    - Medium: 1 week into the future
-         *    - Hard: 1 month into the future
-         *
-         * 2. Take the last price from the daily data as the "future" price
-         *
-         * 3. Remove the corresponding amount of data from all timeframes
-         *    to hide the future prices from the player
-         */
-        var futureIndex = getFutureIndex(difficulty);
-        var futurePrice = processedData['1D'][processedData['1D'].length - 1].close;
-        var choices = priceUtils_1.generatePriceChoices(futurePrice);
-        // Remove future data from all time intervals to maintain consistency
-        Object.keys(processedData).forEach(function (tf) {
-            processedData[tf] = processedData[tf].slice(0, -futureIndex);
-        });
-        return { choices: choices, futurePrice: futurePrice };
-    };
-    /**
-     * Get future index based on difficulty level.
-     * Easy: 1 day, Medium: 7 days, Hard: 30 days
-     */
-    var getFutureIndex = function (difficulty) {
-        switch (difficulty) {
-            case 'Easy':
-                return 1;
-            case 'Medium':
-                return 7;
-            case 'Hard':
-                return 30;
-            default:
-                return 1;
-        }
-    };
-    /**
      * Update game state with new round data.
-     * Resets selection and result states.
      */
     var updateGameState = function (processedData, choices, futurePrice) {
         console.log('Updating game state with:', { choices: choices, futurePrice: futurePrice });
@@ -226,69 +63,120 @@ exports.GameScreen = function (_a) {
         setShowResult(false);
         setLoading(false);
     };
-    var debugWrapper = function (fn, name) {
-        return function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
-            console.log("Entering " + name);
-            try {
-                var result = fn.apply(void 0, args);
-                console.log("Exiting " + name);
-                return result;
-            }
-            catch (error) {
-                console.error("Error in " + name + ":", error);
-                throw error;
-            }
+    var formatOhlcBar = react_1.useCallback(function (bar, timeInterval) {
+        // Always use Unix timestamp for time
+        return {
+            time: bar.timestamp,
+            open: bar.open,
+            high: bar.high,
+            low: bar.low,
+            close: bar.close
         };
-    };
-    var handleSubmit = debugWrapper(function () {
-        console.log('Submit button clicked');
-        console.log('Current game state:', {
-            selectedChoice: selectedChoice,
-            correctPrice: correctPrice,
-            priceChoices: priceChoices,
-            showResult: showResult,
-            score: score,
-            attempt: attempt
+    }, []);
+    var sortOhlcBars = react_1.useCallback(function (a, b) {
+        return typeof a.time === 'number' ? a.time - b.time : a.time < b.time ? -1 : 1;
+    }, []);
+    var logDataStructure = react_1.useCallback(function (processedData) {
+        console.log('Available time intervals:', Object.keys(processedData));
+        console.log('Data structure:', {
+            timeIntervals: Object.keys(processedData),
+            sampleSizes: Object.entries(processedData).map(function (_a) {
+                var tf = _a[0], data = _a[1];
+                return tf + ": " + data.length + " bars";
+            })
         });
-        if (!selectedChoice) {
-            console.warn('No choice selected, returning early');
-            return;
+    }, []);
+    var processOhlcData = react_1.useCallback(function (data) {
+        var _a;
+        var displayIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
+        var processedData = {};
+        displayIntervals.forEach(function (tf) {
+            processedData[tf] = data[tf]
+                .map(function (bar) { return formatOhlcBar(bar, tf); })
+                .sort(function (a, b) { return sortOhlcBars(a, b); });
+        });
+        // Log first date for each interval
+        var firstDates = Object.entries(processedData).map(function (_a) {
+            var _b, _c;
+            var interval = _a[0], data = _a[1];
+            return ({
+                interval: interval,
+                firstDate: luxon_1.DateTime.fromSeconds((_b = data[0]) === null || _b === void 0 ? void 0 : _b.time).toISO(),
+                timestamp: (_c = data[0]) === null || _c === void 0 ? void 0 : _c.time
+            });
+        });
+        console.log('First dates for each interval:', firstDates);
+        // Validate close prices
+        var closeValues = Object.entries(processedData).map(function (_a) {
+            var _b, _c;
+            var interval = _a[0], data = _a[1];
+            return ({
+                interval: interval,
+                close: (_b = data[data.length - 1]) === null || _b === void 0 ? void 0 : _b.close,
+                timestamp: (_c = data[data.length - 1]) === null || _c === void 0 ? void 0 : _c.time
+            });
+        });
+        console.log('Frontend - Final close prices:', closeValues);
+        var firstClose = (_a = closeValues[0]) === null || _a === void 0 ? void 0 : _a.close;
+        var mismatchedIntervals = closeValues.filter(function (item) { return Math.abs((item.close - firstClose) / firstClose) > 0.0001; });
+        if (mismatchedIntervals.length > 0) {
+            console.error('Frontend - Close price mismatch:', mismatchedIntervals);
+            throw new Error('Close prices do not match across intervals');
         }
+        logDataStructure(processedData);
+        return processedData;
+    }, [formatOhlcBar, sortOhlcBars, logDataStructure]);
+    var getFutureIndex = react_1.useCallback(function (difficulty) {
+        switch (difficulty) {
+            case 'Easy':
+                return 1;
+            case 'Medium':
+                return 7;
+            case 'Hard':
+                return 30;
+            default:
+                return 1;
+        }
+    }, []);
+    var generateChoices = react_1.useCallback(function (processedData, difficulty) {
+        var futureIndex = getFutureIndex(difficulty);
+        var futurePrice = processedData['D'][processedData['D'].length - 1].close;
+        var choices = priceUtils_1.generatePriceChoices(futurePrice);
+        Object.keys(processedData).forEach(function (tf) {
+            processedData[tf] = processedData[tf].slice(0, -futureIndex);
+        });
+        return { choices: choices, futurePrice: futurePrice };
+    }, [getFutureIndex]);
+    var generateNewRound = react_1.useCallback(function () {
+        console.log('Generating new round');
+        setLoading(true);
         try {
-            console.log('Processing submission...');
-            if (selectedChoice === correctPrice) {
-                console.log('Correct answer! Selected:', selectedChoice, 'Correct:', correctPrice);
-                setScore(function (prev) {
-                    var newScore = __assign(__assign({}, prev), { right: prev.right + 1 });
-                    console.log('Updated score:', newScore);
-                    return newScore;
-                });
-            }
-            else {
-                console.log('Wrong answer. Selected:', selectedChoice, 'Correct:', correctPrice);
-                setScore(function (prev) {
-                    var newScore = __assign(__assign({}, prev), { wrong: prev.wrong + 1 });
-                    console.log('Updated score:', newScore);
-                    return newScore;
-                });
-            }
-            console.log('Setting showResult to true');
-            setShowResult(true);
-            console.log('Submission processing complete');
+            var data = generateRandomData();
+            var processedData = processOhlcData(data);
+            var _a = generateChoices(processedData, difficulty), choices = _a.choices, futurePrice = _a.futurePrice;
+            updateGameState(processedData, choices, futurePrice);
         }
         catch (error) {
-            console.error('Error in handleSubmit:', error);
+            console.error('Error generating new round:', error);
+            setLoading(false);
         }
-    }, 'handleSubmit');
-    var handleSubmitClick = debugWrapper(function (event) {
-        event.preventDefault();
-        console.log('Submit button clicked - direct handler');
-        handleSubmit();
-    }, 'handleSubmitClick');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [difficulty, processOhlcData, generateChoices]);
+    // Initialize game on mount
+    react_1.useEffect(function () {
+        console.log('GameScreen initialization started');
+        if (!hasInitialized.current) {
+            console.log('Generating initial game data');
+            generateNewRound();
+            hasInitialized.current = true;
+        }
+        else {
+            console.log('Skipping duplicate initialization');
+        }
+        return function () {
+            console.log('GameScreen cleanup');
+        };
+    }, [generateNewRound]);
     // Add logging to track state changes
     react_1.useEffect(function () {
         console.log('Score changed:', score);
@@ -323,7 +211,9 @@ exports.GameScreen = function (_a) {
         handleNext();
     };
     // Add test logging on mount
-    react_1.useEffect(function () {
+    react_1.useEffect(
+    /* eslint-disable react-hooks/exhaustive-deps */
+    function () {
         console.log('GameScreen mounted');
         console.log('Initial state:', {
             difficulty: difficulty,
@@ -334,7 +224,9 @@ exports.GameScreen = function (_a) {
             score: score,
             attempt: attempt
         });
-    }, []);
+    }, []
+    /* eslint-enable react-hooks/exhaustive-deps */
+    );
     if (loading) {
         return (react_1["default"].createElement(material_1.Box, { display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" },
             react_1["default"].createElement(material_1.CircularProgress, null)));
@@ -427,7 +319,7 @@ exports.GameScreen = function (_a) {
                     position: 'relative',
                     zIndex: 1
                 } },
-                react_1["default"].createElement(ChartComponent_1.ChartComponent, { data: historicalData, defaultInterval: "1D" })),
+                react_1["default"].createElement(ChartComponent_1.ChartComponent, { data: historicalData, defaultInterval: "D" })),
             react_1["default"].createElement(material_1.Box, { sx: {
                     mb: 4,
                     position: 'relative',

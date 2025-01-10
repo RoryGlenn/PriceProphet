@@ -35,7 +35,7 @@ var chartContainerStyles = {
     }
 };
 exports.ChartComponent = function (_a) {
-    var data = _a.data, _b = _a.defaultInterval, defaultInterval = _b === void 0 ? '1D' : _b;
+    var data = _a.data, _b = _a.defaultInterval, defaultInterval = _b === void 0 ? 'D' : _b;
     var chartContainerRef = react_1.useRef(null);
     var _c = react_1.useState(defaultInterval), interval = _c[0], setInterval = _c[1];
     var handleIntervalChange = function (_event, newInterval) {
@@ -48,6 +48,8 @@ exports.ChartComponent = function (_a) {
         if (!chartContainerRef.current || !((_a = data[interval]) === null || _a === void 0 ? void 0 : _a.length))
             return;
         var chart = lightweight_charts_1.createChart(chartContainerRef.current, {
+            width: chartContainerRef.current.clientWidth,
+            height: 400,
             layout: {
                 background: { color: 'transparent' },
                 textColor: 'rgba(255, 255, 255, 0.7)',
@@ -58,22 +60,20 @@ exports.ChartComponent = function (_a) {
                 vertLines: { color: 'rgba(43, 43, 67, 0.5)' },
                 horzLines: { color: 'rgba(43, 43, 67, 0.5)' }
             },
-            width: chartContainerRef.current.clientWidth,
-            height: 400,
             timeScale: {
-                timeVisible: true,
-                secondsVisible: interval.includes('min'),
+                timeVisible: interval.endsWith('m') || interval.endsWith('h'),
+                secondsVisible: false,
                 borderColor: 'rgba(43, 43, 67, 0.5)',
                 fixLeftEdge: true,
                 fixRightEdge: true,
                 rightOffset: 12,
-                barSpacing: interval.includes('min') ? 3 : 6,
+                barSpacing: interval.endsWith('m') ? 3 : 6,
                 minBarSpacing: 2,
                 tickMarkFormatter: function (time) {
                     var date = typeof time === 'number'
                         ? luxon_1.DateTime.fromSeconds(time)
                         : luxon_1.DateTime.fromFormat(time, 'yyyy-MM-dd');
-                    return interval.includes('min')
+                    return interval.endsWith('m') || interval.endsWith('h')
                         ? date.toFormat('HH:mm')
                         : date.toFormat('MMM dd');
                 }
@@ -109,36 +109,17 @@ exports.ChartComponent = function (_a) {
             };
             processNextChunk();
         };
-        if (interval.includes('min') && data[interval].length > 5000) {
+        if (interval.endsWith('m') && data[interval].length > 5000) {
             setDataInChunks(data[interval]);
         }
         else {
             candlestickSeries.setData(data[interval]);
             chart.timeScale().fitContent();
         }
-        candlestickSeries.applyOptions({
-            priceFormat: {
-                type: 'price',
-                precision: 2,
-                minMove: 0.01
-            }
-        });
-        chart.priceScale('right').applyOptions({
-            autoScale: true,
-            borderColor: 'rgba(43, 43, 67, 0.5)',
-            scaleMargins: {
-                top: 0.1,
-                bottom: 0.1
-            },
-            ticksVisible: false
-        });
         var handleResize = function () {
-            if (chartContainerRef.current) {
-                chart.applyOptions({
-                    width: chartContainerRef.current.clientWidth
-                });
-                chart.timeScale().fitContent();
-            }
+            chart.applyOptions({
+                width: chartContainerRef.current.clientWidth
+            });
         };
         window.addEventListener('resize', handleResize);
         return function () {
@@ -149,13 +130,13 @@ exports.ChartComponent = function (_a) {
     return (react_1["default"].createElement(material_1.Box, null,
         react_1["default"].createElement(material_1.Box, { sx: buttonGroupStyles },
             react_1["default"].createElement(material_1.ToggleButtonGroup, { value: interval, exclusive: true, onChange: handleIntervalChange, "aria-label": "time-interval", size: "small" },
-                react_1["default"].createElement(material_1.ToggleButton, { value: "1min", "aria-label": "1 minute" }, "1m"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "5min", "aria-label": "5 minutes" }, "5m"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "15min", "aria-label": "15 minutes" }, "15m"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "1H", "aria-label": "1 hour" }, "1H"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "4H", "aria-label": "4 hours" }, "4H"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "1D", "aria-label": "1 day" }, "1D"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "1W", "aria-label": "1 week" }, "1W"),
-                react_1["default"].createElement(material_1.ToggleButton, { value: "1M", "aria-label": "1 month" }, "1M"))),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "1m", "aria-label": "1 minute" }, "1m"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "5m", "aria-label": "5 minutes" }, "5m"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "15m", "aria-label": "15 minutes" }, "15m"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "1h", "aria-label": "1 hour" }, "1h"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "4h", "aria-label": "4 hours" }, "4h"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "D", "aria-label": "1 day" }, "D"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "W", "aria-label": "1 week" }, "W"),
+                react_1["default"].createElement(material_1.ToggleButton, { value: "M", "aria-label": "1 month" }, "M"))),
         react_1["default"].createElement(material_1.Box, { ref: chartContainerRef, sx: chartContainerStyles })));
 };

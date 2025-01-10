@@ -9,17 +9,6 @@
  *  - Ensures data consistency across all time intervals
  *  - Uses Luxon for precise datetime handling
  *********************************************************************/
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 exports.__esModule = true;
 exports.RandomOHLC = void 0;
 var luxon_1 = require("luxon");
@@ -57,7 +46,7 @@ var RandomOHLC = /** @class */ (function () {
         this.startPrice = config.startPrice;
         this.volatility = config.volatility;
         this.drift = config.drift;
-        this.timeIntervals = ['1min', '5min', '15min', '1H', '4H', '1D', '1W', '1M'];
+        this.timeIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
         console.info('Initializing RandomOHLC with config:', config);
     }
     /**
@@ -69,7 +58,9 @@ var RandomOHLC = /** @class */ (function () {
     RandomOHLC.prototype.generateOhlcData = function () {
         var minuteData = this.generateMinuteData();
         var result = this.createTimeIntervalData(minuteData);
-        return this.normalizeTimeIntervals(result, minuteData);
+        var normalized = this.normalizeTimeIntervals(result, minuteData);
+        this.validateOpenPrice(normalized);
+        return normalized;
     };
     /**
      * Generate minute-level OHLC data using GBM.
@@ -95,10 +86,16 @@ var RandomOHLC = /** @class */ (function () {
      * @returns Array of DateTime objects
      */
     RandomOHLC.prototype.generateDateRange = function (numMinutes) {
-        var startDate = luxon_1.DateTime.fromISO('2030-01-01T00:00:00');
+        // Start at the beginning of the day
+        var startDate = luxon_1.DateTime.fromISO('2030-01-01T00:00:00').startOf('day');
         var dates = [];
+        // Generate complete days of data
         for (var i = 0; i < numMinutes; i++) {
-            dates.push(startDate.plus({ minutes: i }));
+            var date = startDate.plus({ minutes: i });
+            // Only include if it's within a complete day
+            if (date < startDate.plus({ days: this.daysNeeded })) {
+                dates.push(date);
+            }
         }
         console.info("Date range: " + dates[0].toISO() + " to " + dates[dates.length - 1].toISO());
         return dates;
@@ -129,10 +126,51 @@ var RandomOHLC = /** @class */ (function () {
      * @returns Normalized TimeIntervalDict
      */
     RandomOHLC.prototype.normalizeTimeIntervals = function (result, minuteData) {
-        var startTimestamp = minuteData[0].timestamp;
-        var endTimestamp = minuteData[minuteData.length - 1].timestamp;
+        // Get the start and end timestamps from the minute data
+        var startDate = luxon_1.DateTime.fromSeconds(minuteData[0].timestamp).startOf('day');
+        var endDate = luxon_1.DateTime.fromSeconds(minuteData[minuteData.length - 1].timestamp);
+        // Ensure endDate is at the end of its last complete interval
+        var lastCompleteDate = endDate.startOf('day');
+        console.log('Normalizing time intervals:', {
+            start: startDate.toISO(),
+            end: lastCompleteDate.toISO()
+        });
+        // Filter data for each interval to ensure they all have the same date range
         Object.keys(result).forEach(function (interval) {
-            result[interval] = result[interval].filter(function (bar) { return bar.timestamp >= startTimestamp && bar.timestamp <= endTimestamp; });
+            result[interval] = result[interval].filter(function (bar) {
+                var barDate = luxon_1.DateTime.fromSeconds(bar.timestamp);
+                // Only include bars that are within complete intervals
+                switch (interval) {
+                    case '4h':
+                        // For 4h, ensure we're not including a partial 4-hour block
+                        return barDate >= startDate &&
+                            barDate.hour % 4 === 0 &&
+                            barDate <= lastCompleteDate.endOf('day');
+                    case 'D':
+                        // For daily, only include complete days
+                        return barDate >= startDate &&
+                            barDate.startOf('day') <= lastCompleteDate;
+                    case 'W':
+                        // For weekly, only include complete weeks
+                        return barDate >= startDate &&
+                            barDate.startOf('week') <= lastCompleteDate;
+                    case 'M':
+                        // For monthly, only include complete months
+                        return barDate >= startDate &&
+                            barDate.startOf('month') <= lastCompleteDate;
+                    default:
+                        // For minute-based intervals, include all points within the day range
+                        return barDate >= startDate && barDate <= lastCompleteDate.endOf('day');
+                }
+            });
+        });
+        // Get the final close price from the minute data
+        var finalClose = minuteData[minuteData.length - 1].close;
+        // Ensure all intervals have the same final close price
+        Object.keys(result).forEach(function (interval) {
+            if (result[interval].length > 0) {
+                result[interval][result[interval].length - 1].close = finalClose;
+            }
         });
         return result;
     };
@@ -233,95 +271,56 @@ var RandomOHLC = /** @class */ (function () {
      * @returns Array of resampled OHLC rows
      */
     RandomOHLC.prototype.resampleToTimeInterval = function (data, timeInterval) {
-        var _this = this;
         // Convert data to DataFrame
         var df = new data_forge_1.DataFrame(data);
-        /*
-         * Define the grouping period based on the time interval.
-         * data-forge will automatically handle the grouping and aggregation.
-         * This is similar to pandas resample() function.
-         */
-        var getPeriod = function (interval) {
-            switch (interval) {
-                case '1min': return '1m';
-                case '5min': return '5m';
-                case '15min': return '15m';
-                case '1H': return '1h';
-                case '4H': return '4h';
-                case '1D': return '1d';
-                case '1W': return '1w';
-                case '1M': return '1M';
-                default: throw new Error("Unsupported time interval: " + interval);
-            }
-        };
-        /*
-         * Group the data by time interval and aggregate:
-         * - First value in group becomes open
-         * - Max value in group becomes high
-         * - Min value in group becomes low
-         * - Last value in group becomes close
-         * - First timestamp in group becomes the interval timestamp
-         */
-        var aggregated = df
-            .groupBy(function (row) {
+        var firstOpenPrice = data[0].open;
+        // Create a grouping key based on the time interval
+        var grouped = df.groupBy(function (row) {
             var date = luxon_1.DateTime.fromSeconds(row.timestamp);
-            return _this.getTimeKey(date, timeInterval);
-        })
-            .select(function (group) {
-            var rows = group.toArray();
-            return {
-                timestamp: rows[0].timestamp,
-                open: rows[0].open,
-                high: Math.max.apply(Math, rows.map(function (r) { return r.high; })),
-                low: Math.min.apply(Math, rows.map(function (r) { return r.low; })),
-                close: rows[rows.length - 1].close // Last price
-            };
-        })
-            .toArray();
-        // Ensure timestamps are properly aligned to interval boundaries
-        return aggregated.map(function (bar) {
-            var date = luxon_1.DateTime.fromSeconds(bar.timestamp);
-            var alignedTimestamp;
             switch (timeInterval) {
-                case '1min':
-                    alignedTimestamp = date.set({ second: 0 }).toSeconds();
-                    break;
-                case '5min':
-                    alignedTimestamp = date.set({
+                case '1m':
+                    return date.set({ second: 0 }).toSeconds();
+                case '5m':
+                    return date.set({
                         minute: Math.floor(date.minute / 5) * 5,
                         second: 0
                     }).toSeconds();
-                    break;
-                case '15min':
-                    alignedTimestamp = date.set({
+                case '15m':
+                    return date.set({
                         minute: Math.floor(date.minute / 15) * 15,
                         second: 0
                     }).toSeconds();
-                    break;
-                case '1H':
-                    alignedTimestamp = date.set({ minute: 0, second: 0 }).toSeconds();
-                    break;
-                case '4H':
-                    alignedTimestamp = date.set({
+                case '1h':
+                    return date.startOf('hour').toSeconds();
+                case '4h':
+                    return date.set({
                         hour: Math.floor(date.hour / 4) * 4,
                         minute: 0,
                         second: 0
                     }).toSeconds();
-                    break;
-                case '1D':
-                    alignedTimestamp = date.startOf('day').toSeconds();
-                    break;
-                case '1W':
-                    alignedTimestamp = date.startOf('week').toSeconds();
-                    break;
-                case '1M':
-                    alignedTimestamp = date.startOf('month').toSeconds();
-                    break;
+                case 'D':
+                    return date.startOf('day').toSeconds();
+                case 'W':
+                    return date.startOf('week').toSeconds();
+                case 'M':
+                    return date.startOf('month').toSeconds();
                 default:
-                    alignedTimestamp = bar.timestamp;
+                    return row.timestamp;
             }
-            return __assign(__assign({}, bar), { timestamp: alignedTimestamp });
-        }).sort(function (a, b) { return a.timestamp - b.timestamp; });
+        });
+        // Aggregate the data
+        var aggregated = grouped.select(function (group) {
+            var rows = group.toArray();
+            var groupTimestamp = rows[0].timestamp;
+            return {
+                timestamp: groupTimestamp,
+                open: groupTimestamp === data[0].timestamp ? firstOpenPrice : rows[0].open,
+                high: Math.max.apply(Math, rows.map(function (r) { return r.high; })),
+                low: Math.min.apply(Math, rows.map(function (r) { return r.low; })),
+                close: rows[rows.length - 1].close
+            };
+        }).toArray();
+        return aggregated.sort(function (a, b) { return a.timestamp - b.timestamp; });
     };
     /**
      * Get a string key for grouping data points by time interval.
@@ -344,26 +343,49 @@ var RandomOHLC = /** @class */ (function () {
          * to ensure consistent grouping (e.g., 09:05, 09:10, 09:15 for 5min intervals)
          */
         switch (timeInterval) {
-            case '1min':
+            case '1m':
                 return date.toFormat('yyyy-MM-dd-HH-mm');
-            case '5min':
+            case '5m':
                 return (date.toFormat('yyyy-MM-dd-HH-') +
                     (Math.floor(date.minute / 5) * 5).toString().padStart(2, '0'));
-            case '15min':
+            case '15m':
                 return (date.toFormat('yyyy-MM-dd-HH-') +
                     (Math.floor(date.minute / 15) * 15).toString().padStart(2, '0'));
-            case '1H':
+            case '1h':
                 return date.toFormat('yyyy-MM-dd-HH');
-            case '4H':
+            case '4h':
                 return (date.toFormat('yyyy-MM-dd-') + (Math.floor(date.hour / 4) * 4).toString().padStart(2, '0'));
-            case '1D':
+            case 'D':
                 return date.toFormat('yyyy-MM-dd');
-            case '1W':
+            case 'W':
                 return date.startOf('week').toFormat('yyyy-MM-dd');
-            case '1M':
+            case 'M':
                 return date.startOf('month').toFormat('yyyy-MM-dd');
             default:
                 throw new Error("Unsupported time interval: " + timeInterval);
+        }
+    };
+    /**
+     * Validate that all intervals have the same final open price
+     * @param result TimeIntervalDict to validate
+     * @returns void, throws error if validation fails
+     */
+    RandomOHLC.prototype.validateOpenPrice = function (result) {
+        var _a;
+        var openValues = Object.entries(result).map(function (_a) {
+            var interval = _a[0], data = _a[1];
+            return ({
+                interval: interval,
+                open: data[0].open,
+                timestamp: data[0].timestamp
+            });
+        });
+        console.log('First open prices:', openValues);
+        var firstOpen = (_a = openValues[0]) === null || _a === void 0 ? void 0 : _a.open;
+        var mismatchedIntervals = openValues.filter(function (item) { return Math.abs((item.open - firstOpen) / firstOpen) > 0.0001; });
+        if (mismatchedIntervals.length > 0) {
+            console.error('Open price mismatch:', mismatchedIntervals);
+            throw new Error('Open prices do not match across intervals');
         }
     };
     return RandomOHLC;
