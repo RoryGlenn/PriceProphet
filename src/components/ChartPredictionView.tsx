@@ -1,8 +1,8 @@
 /*********************************************************************
- * GameScreen.tsx
+ * ChartPredictionView.tsx
  *
- * Main game interface component that handles the price prediction gameplay.
- * Manages game state, data generation, user interactions, and scoring.
+ * Main chart prediction interface component that handles price prediction gameplay.
+ * Manages chart state, data generation, user interactions, and scoring.
  *********************************************************************/
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -24,13 +24,13 @@ import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
 
 /**
- * Props for the GameScreen component
+ * Props for the ChartPredictionView component
  *
- * @interface GameScreenProps
+ * @interface ChartPredictionViewProps
  * @property {DifficultyLevel} difficulty - Selected difficulty level
  * @property {Function} onGameEnd - Callback when game ends with final score
  */
-interface GameScreenProps {
+interface ChartPredictionViewProps {
   /** Selected difficulty level */
   difficulty: DifficultyLevel;
   /** Callback function when game ends with final score */
@@ -38,19 +38,19 @@ interface GameScreenProps {
 }
 
 /**
- * Main game interface component.
- * Handles the core game logic including:
+ * Main chart prediction interface component.
+ * Handles the core prediction logic including:
  * - Data generation using RandomOHLC
- * - Game state management
+ * - Chart state management
  * - Score tracking
  * - User interaction processing
  *
  * @component
- * @param {GameScreenProps} props - Component props
+ * @param {ChartPredictionViewProps} props - Component props
  * @param {DifficultyLevel} props.difficulty - Selected difficulty level
  * @param {Function} props.onGameEnd - Callback when game ends with final score
  */
-export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd }) => {
+export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ difficulty, onGameEnd }) => {
   // Game state variables
   /** Historical price data organized by timeframe */
   const [historicalData, setHistoricalData] = useState<{ [key: string]: OhlcBar[] }>({});
@@ -249,72 +249,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
         return 1;
     }
   }, []);
-
-  /**
-   * Calculates how many bars to remove from each timeframe based on the number of days.
-   * Ensures consistent data removal across all timeframes to hide future data.
-   *
-   * @param timeframe Current timeframe (1m, 5m, 15m, etc.)
-   * @param days Number of days to remove
-   * @returns Number of bars to remove for the given timeframe
-   */
-  // const getBarsToRemove = useCallback((timeframe: string, days: number): number => {
-  //   // Calculate how many bars to remove for each timeframe based on number of days
-  //   const minutesInDay = 1440;
-  //   switch (timeframe) {
-  //     case '1m': return days * minutesInDay;        // 1440 minutes per day
-  //     case '5m': return days * (minutesInDay / 5);  // 288 5-min bars per day
-  //     case '15m': return days * (minutesInDay / 15); // 96 15-min bars per day
-  //     case '1h': return days * 24;                  // 24 1-hour bars per day
-  //     case '4h': return days * 6;                   // 6 4-hour bars per day
-  //     case 'D': return days;                        // 1 daily bar per day
-  //     case 'W': return Math.ceil(days / 7);         // Convert days to weeks
-  //     case 'M': return Math.ceil(days / 30);        // Approximate months
-  //     default: return days;
-  //   }
-  // }, []);
-
-  /**
-   * Generates price choices for the prediction game.
-   * Takes the future price and creates a set of plausible options around it.
-   * Also handles data trimming to hide future data from the player.
-   *
-   * @param processedData OHLC data organized by timeframe
-   * @param difficulty Current game difficulty
-   * @returns Object containing price choices and the correct future price
-   */
-  // const generateChoices = useCallback((
-  //   processedData: { [key: string]: OhlcBar[] },
-  //   difficulty: string
-  // ): { choices: string[]; futurePrice: number } => {
-  //   // Log the initial data lengths
-  //   console.log('Initial data lengths:', Object.fromEntries(
-  //     Object.entries(processedData).map(([interval, data]) => [interval, data.length])
-  //   ));
-
-  //   // Get the 91st day's close price as the answer
-  //   const futurePrice = processedData['D'][processedData['D'].length - 1].close;
-  //   console.log('Future price (91st day):', futurePrice);
-
-  //   // Calculate days to remove based on difficulty
-  //   const daysToRemove = getFutureIndex(difficulty);
-  //   console.log('Days to remove based on difficulty:', {
-  //     difficulty,
-  //     daysToRemove
-  //   });
-
-  //   const choices = generatePriceChoices(futurePrice);
-
-  //   // Remove the appropriate number of bars from each timeframe
-  //   Object.keys(processedData).forEach((tf) => {
-  //     const beforeLength = processedData[tf].length;
-  //     const barsToRemove = getBarsToRemove(tf, daysToRemove);
-  //     processedData[tf] = processedData[tf].slice(0, -barsToRemove);
-  //     console.log(`${tf} data: ${beforeLength} bars -> ${processedData[tf].length} bars (removed ${barsToRemove} bars)`);
-  //   });
-
-  //   return { choices, futurePrice };
-  // }, [getFutureIndex, getBarsToRemove]);
 
   /**
    * Generates a new round of the game.

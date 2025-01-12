@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { WelcomePage } from './components/WelcomePage';
-import { GameScreen } from './components/GameScreen';
+import { ChartPredictionView } from './components/ChartPredictionView';
 import { ResultsPage } from './components/ResultsPage';
 import { DifficultyLevel } from './types';
 
@@ -50,7 +50,7 @@ export const App: React.FC = () => {
 
   switch (gameState) {
     case 'playing':
-      return <GameScreen difficulty={difficulty} onGameEnd={handleGameEnd} />;
+      return <ChartPredictionView difficulty={difficulty} onGameEnd={handleGameEnd} />;
     case 'results':
       return (
         <ResultsPage
