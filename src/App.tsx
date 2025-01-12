@@ -6,7 +6,7 @@
  * difficulty selection and game session management.
  *********************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { WelcomePage } from './components/WelcomePage';
 import { ChartPredictionView } from './components/ChartPredictionView';
 import { ResultsPage } from './components/ResultsPage';
@@ -19,14 +19,20 @@ interface GameScore {
   wrong: number;
 }
 
+const initialScore: GameScore = { right: 0, wrong: 0 };
+
 export const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('welcome');
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('easy');
-  const [score, setScore] = useState<GameScore>({ right: 0, wrong: 0 });
+  const [score, setScore] = useState<GameScore>(initialScore);
+
+  const resetScore = useCallback(() => {
+    setScore(initialScore);
+  }, []);
 
   const handleStartGame = (selectedDifficulty: DifficultyLevel) => {
     setDifficulty(selectedDifficulty);
-    setScore({ right: 0, wrong: 0 });
+    resetScore();
     setGameState('playing');
   };
 
@@ -36,14 +42,14 @@ export const App: React.FC = () => {
   };
 
   const handlePlayAgain = () => {
-    setScore({ right: 0, wrong: 0 });
+    resetScore();
     setGameState('playing');
   };
 
   const handleBackToMenu = () => {
     setGameState('welcome');
     setDifficulty('easy');
-    setScore({ right: 0, wrong: 0 });
+    resetScore();
   };
 
   // Development-only state transition logging

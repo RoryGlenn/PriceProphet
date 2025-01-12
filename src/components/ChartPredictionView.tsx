@@ -24,6 +24,7 @@ import { RandomOHLC, TimeIntervalDict } from '../random_ohlc';
 import { OhlcBar, OhlcRow, DifficultyLevel } from '../types';
 import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
+import { buttonStyles, layoutStyles } from '../styles/theme'; 
 
 /**
  * Props for the ChartPredictionView component
@@ -431,24 +432,14 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <Box sx={{ ...layoutStyles.flexCenter, minHeight: '100vh' }}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Container
-      maxWidth={false}
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)',
-        padding: '2rem',
-        display: 'flex',
-        alignItems: 'center',
-        position: 'relative',
-      }}
-    >
+    <Container maxWidth={false} sx={layoutStyles.mainContainer}>
       <Snackbar 
         open={!!error} 
         autoHideDuration={6000} 
@@ -460,41 +451,8 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
         </Alert>
       </Snackbar>
 
-      <Paper
-        sx={{
-          width: '100%',
-          background: 'rgba(16, 20, 24, 0.8)',
-          backdropFilter: 'blur(20px)',
-          color: 'white',
-          borderRadius: 4,
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-          position: 'relative',
-          overflow: 'hidden',
-          p: 4,
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            inset: 0,
-            borderRadius: 4,
-            padding: '2px',
-            background: 'linear-gradient(60deg, #00F5A0, #00D9F5)',
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-          },
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 4,
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
+      <Paper sx={{ width: '100%', p: 4, ...layoutStyles.glassPanel }}>
+        <Box sx={{ ...layoutStyles.flexBetween, mb: 4, position: 'relative', zIndex: 1 }}>
           <Typography
             variant="h4"
             sx={{
@@ -508,14 +466,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
           <Button
             variant="outlined"
             onClick={handleBackToMenu}
-            sx={{
-              borderColor: 'rgba(0, 245, 160, 0.5)',
-              color: '#00F5A0',
-              '&:hover': {
-                borderColor: '#00F5A0',
-                backgroundColor: 'rgba(0, 245, 160, 0.1)',
-              },
-            }}
+            sx={buttonStyles.outline}
           >
             Back to Menu
           </Button>
@@ -662,18 +613,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
                 margin: '0 auto',
                 minWidth: 200,
                 height: 48,
-                background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
-                boxShadow: '0 3px 16px rgba(0, 245, 160, 0.3)',
-                fontSize: '1rem',
-                fontWeight: 600,
-                letterSpacing: 1,
-                border: 0,
-                zIndex: 10,
-                position: 'relative',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
-                  boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',
-                },
+                ...buttonStyles.primary,
               }}
             >
               {attempt >= 5 ? 'See Results' : 'Next Round'}
@@ -683,12 +623,8 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
           <Button
             variant="contained"
             onClick={handleSubmit}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-            onMouseUp={(e) => {
-              e.stopPropagation();
-            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
             size="large"
             disabled={!selectedChoice}
             sx={{
@@ -696,22 +632,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
               margin: '0 auto',
               minWidth: 200,
               height: 48,
-              background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
-              boxShadow: '0 3px 16px rgba(0, 245, 160, 0.3)',
-              fontSize: '1rem',
-              fontWeight: 600,
-              letterSpacing: 1,
-              border: 0,
-              zIndex: 10,
-              position: 'relative',
-              '&:hover': {
-                background: 'linear-gradient(45deg, #00F5A0 30%, #00D9F5 90%)',
-                boxShadow: '0 6px 20px rgba(0, 245, 160, 0.4)',
-              },
-              '&.Mui-disabled': {
-                background: 'rgba(255, 255, 255, 0.1)',
-                boxShadow: 'none',
-              },
+              ...buttonStyles.primary,
             }}
           >
             Submit Prediction
