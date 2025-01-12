@@ -22,6 +22,26 @@ interface TimeIntervalDict {
 }
 
 /**
+ * Custom error class for price validation errors
+ */
+export class PriceValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PriceValidationError';
+  }
+}
+
+/**
+ * Custom error class for data generation errors
+ */
+export class DataGenerationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DataGenerationError';
+  }
+}
+
+/**
  * Generates synthetic OHLC price data using Geometric Brownian Motion.
  * Supports multiple time intervals and ensures data consistency.
  */
@@ -316,22 +336,39 @@ export class RandomOHLC {
    * @returns void, throws error if validation fails
    */
   private validateOpenPrice(result: TimeIntervalDict): void {
-    const openValues = Object.entries(result).map(([interval, data]) => ({
-      interval,
-      open: data[0].open,
-      timestamp: data[0].timestamp,
-    }));
+    try {
+      const openValues = Object.entries(result).map(([interval, data]) => ({
+        interval,
+        open: data[0].open,
+        timestamp: data[0].timestamp,
+      }));
 
-    // console.log('First open prices:', openValues);
+      if (openValues.length === 0) {
+        throw new DataGenerationError('No data available for validation');
+      }
 
-    const firstOpen = openValues[0]?.open;
-    const mismatchedIntervals = openValues.filter(
-      (item) => Math.abs((item.open - firstOpen) / firstOpen) > 0.0001
-    );
+      const firstOpen = openValues[0]?.open;
+      if (typeof firstOpen !== 'number' || isNaN(firstOpen)) {
+        throw new DataGenerationError('Invalid opening price detected');
+      }
 
-    if (mismatchedIntervals.length > 0) {
-      console.error('Open price mismatch:', mismatchedIntervals);
-      throw new Error('Open prices do not match across intervals');
+      const mismatchedIntervals = openValues.filter(
+        (item) => Math.abs((item.open - firstOpen) / firstOpen) > 0.0001
+      );
+
+      if (mismatchedIntervals.length > 0) {
+        const details = mismatchedIntervals
+          .map(item => `${item.interval}: ${item.open}`)
+          .join(', ');
+        throw new PriceValidationError(
+          `Open prices do not match across intervals: ${details}`
+        );
+      }
+    } catch (error) {
+      if (error instanceof PriceValidationError || error instanceof DataGenerationError) {
+        throw error;
+      }
+      throw new DataGenerationError('Unexpected error during price validation');
     }
   }
 }

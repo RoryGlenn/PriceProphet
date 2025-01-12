@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { WelcomePage } from './components/WelcomePage';
 import { GameScreen } from './components/GameScreen';
 import { ResultsPage } from './components/ResultsPage';
+import { DifficultyLevel } from './types';
 
 type GameState = 'welcome' | 'playing' | 'results';
 
@@ -20,10 +21,10 @@ interface GameScore {
 
 export const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('welcome');
-  const [difficulty, setDifficulty] = useState<string>('');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('easy');
   const [score, setScore] = useState<GameScore>({ right: 0, wrong: 0 });
 
-  const handleStartGame = (selectedDifficulty: string) => {
+  const handleStartGame = (selectedDifficulty: DifficultyLevel) => {
     setDifficulty(selectedDifficulty);
     setScore({ right: 0, wrong: 0 });
     setGameState('playing');
@@ -41,7 +42,7 @@ export const App: React.FC = () => {
 
   const handleBackToMenu = () => {
     setGameState('welcome');
-    setDifficulty('');
+    setDifficulty('easy');
     setScore({ right: 0, wrong: 0 });
   };
 

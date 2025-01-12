@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { ChartComponent } from './ChartComponent';
 import { RandomOHLC } from '../random_ohlc';
-import { OhlcBar, OhlcRow } from '../types';
+import { OhlcBar, OhlcRow, DifficultyLevel } from '../types';
 import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
 
@@ -27,12 +27,12 @@ import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
  * Props for the GameScreen component
  *
  * @interface GameScreenProps
- * @property {string} difficulty - Selected difficulty level (Easy, Medium, Hard)
+ * @property {DifficultyLevel} difficulty - Selected difficulty level
  * @property {Function} onGameEnd - Callback when game ends with final score
  */
 interface GameScreenProps {
   /** Selected difficulty level */
-  difficulty: string;
+  difficulty: DifficultyLevel;
   /** Callback function when game ends with final score */
   onGameEnd: (score: { right: number; wrong: number }) => void;
 }
@@ -47,7 +47,7 @@ interface GameScreenProps {
  *
  * @component
  * @param {GameScreenProps} props - Component props
- * @param {string} props.difficulty - Selected difficulty level
+ * @param {DifficultyLevel} props.difficulty - Selected difficulty level
  * @param {Function} props.onGameEnd - Callback when game ends with final score
  */
 export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd }) => {
@@ -102,58 +102,57 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
   };
 
   /**
-   * Updates the game state with new round data.
-   * Resets the game state for a new round by:
-   * - Setting the historical data for the chart
-   * - Setting up the price choices for the player
-   * - Setting the correct price
-   * - Resetting selection and result states
-   * - Turning off loading state
-   *
-   * @param processedData - Processed OHLC data organized by timeframe
-   * @param choices - Array of price choices to display to the player
-   * @param futurePrice - The correct future price for this round
+   * Updates the game state with new data and choices
    */
-  const updateGameState = (
-    processedData: { [key: string]: OhlcBar[] },
-    choices: string[],
-    futurePrice: number
-  ) => {
-    setHistoricalData(processedData);
-    setPriceChoices(choices);
-    setCorrectPrice(formatPrice(futurePrice));
-    setSelectedChoice('');
-    setShowResult(false);
-    setLoading(false);
-  };
-
-  /**
-   * Converts a single OhlcRow to an OhlcBar format required by the charting library.
-   * The main transformation is converting the Unix timestamp to the chart's Time format.
-   *
-   * @param bar Raw OHLC bar with Unix timestamp
-   * @param timeInterval Current timeframe being processed
-   * @returns Formatted OHLC bar ready for the chart
-   */
-  const formatOhlcBar = useCallback((bar: OhlcRow, timeInterval: string): OhlcBar => {
-    return {
-      time: bar.timestamp as Time, // Cast Unix timestamp to chart's Time type
-      open: bar.open, // Price values remain the same
-      high: bar.high, // Just copying them from
-      low: bar.low, // the raw data to the
-      close: bar.close, // processed format
-    };
-  }, []);
-
-  const sortOhlcBars = useCallback(
-    (a: OhlcBar, b: OhlcBar): number =>
-      typeof a.time === 'number' ? a.time - (b.time as number) : a.time < b.time ? -1 : 1,
+  const updateGameState = useCallback(
+    (
+      processedData: { [key: string]: OhlcBar[] },
+      choices: string[],
+      futurePrice: number
+    ) => {
+      setHistoricalData(processedData);
+      setPriceChoices(choices);
+      setCorrectPrice(formatPrice(futurePrice));
+      setSelectedChoice('');
+      setShowResult(false);
+      setLoading(false);
+    },
     []
   );
 
-  // const logDataStructure = useCallback((processedData: { [key: string]: OhlcBar[] }) => {
-  //   // Keep this empty but maintain the function for future debugging if needed
-  // }, []);
+  /**
+   * Sorts OHLC bars by time, handling both number and string timestamps
+   */
+  const sortOhlcBars = useCallback(
+    (a: OhlcBar, b: OhlcBar): number => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') {
+        return a.time - b.time;
+      }
+      if (typeof a.time === 'string' && typeof b.time === 'string') {
+        return a.time.localeCompare(b.time);
+      }
+      // Handle mixed types (shouldn't occur in practice)
+      return String(a.time).localeCompare(String(b.time));
+    },
+    []
+  );
+
+  /**
+   * Formats a raw OHLC row into a bar format suitable for the chart
+   */
+  const formatOhlcBar = useCallback((bar: OhlcRow, timeframe: string): OhlcBar => {
+    const timeValue = timeframe === 'D' || timeframe === 'W' || timeframe === 'M'
+      ? new Date(bar.timestamp * 1000).toISOString().split('T')[0]
+      : bar.timestamp;
+
+    return {
+      time: timeValue as Time,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+    };
+  }, []);
 
   /**
    * Processes raw OHLC data into timeframe groups.
@@ -223,11 +222,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
         }));
       });
 
-      // // Log the data structure for verification
-      // console.log('Processed data lengths:', Object.fromEntries(
-      //   Object.entries(processedData).map(([interval, data]) => [interval, data.length])
-      // ));
-
       return processedData;
     },
     [formatOhlcBar, sortOhlcBars]
@@ -242,15 +236,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
    * @param difficulty Selected game difficulty
    * @returns Number of days to look ahead
    */
-  const getFutureIndex = useCallback((difficulty: string): number => {
-    switch (difficulty) {
-      case 'Easy':
+  const getFutureIndex = useCallback((difficulty: DifficultyLevel): number => {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
         return 1;
-      case 'Medium':
+      case 'medium':
         return 7;
-      case 'Hard':
+      case 'hard':
         return 30;
       default:
+        console.error(`Invalid difficulty level: ${difficulty}`);
         return 1;
     }
   }, []);
@@ -350,7 +345,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
       // Now process the trimmed data into all timeframes
       const processedData = processOhlcData(rawData);
 
-      // Generate choices using the stored future price
       const choices = generatePriceChoices(futurePrice);
 
       // Update game state
@@ -358,8 +352,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ difficulty, onGameEnd })
     } catch (error) {
       console.error('Error generating new round:', error);
       setLoading(false);
-      // Show error message to user
-      alert('An error occurred while generating the game data. Please try again.');
+      
+      // More specific error handling
+      if (error instanceof Error) {
+        const errorMessage = error.message.includes('Open prices do not match')
+          ? 'Data generation failed due to price mismatch. Please try again.'
+          : 'An unexpected error occurred. Please try again.';
+        
+        // You might want to use a proper error display component here
+        alert(errorMessage);
+      }
     }
   }, [difficulty, processOhlcData, getFutureIndex]);
 

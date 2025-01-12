@@ -24,16 +24,16 @@ import { DifficultyLevel } from '../types';
  */
 interface WelcomePageProps {
   /** Callback function called when the user starts the game */
-  onStartGame: (difficulty: string) => void;
+  onStartGame: (difficulty: DifficultyLevel) => void;
 }
 
 /**
  * Descriptions for each difficulty level
  */
-const difficultyDescriptions: { [key: string]: string } = {
-  Easy: 'Predict the price 1 day into the future',
-  Medium: 'Predict the price 1 week into the future',
-  Hard: 'Predict the price 1 month into the future',
+const difficultyDescriptions: Record<DifficultyLevel, string> = {
+  easy: 'Predict the price 1 day into the future',
+  medium: 'Predict the price 1 week into the future',
+  hard: 'Predict the price 1 month into the future',
 };
 
 /**
@@ -44,20 +44,18 @@ const difficultyDescriptions: { [key: string]: string } = {
  * @param props.onStartGame - Callback function called when the user starts the game
  */
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('Easy');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('easy');
 
   // Track component mounting
   useEffect(() => {
     // Component initialization
   }, []);
 
-  const handleDifficultyChange = (_event: React.ChangeEvent<HTMLInputElement>) => {
-    const newDifficulty = (_event.target as HTMLInputElement).value as DifficultyLevel;
-    setSelectedDifficulty(newDifficulty);
+  const handleDifficultyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedDifficulty(event.target.value as DifficultyLevel);
   };
 
-  const handleStartGame = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const handleStartClick = () => {
     onStartGame(selectedDifficulty);
   };
 
@@ -217,7 +215,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
         <Button
           component="button"
           variant="contained"
-          onClick={handleStartGame}
+          onClick={handleStartClick}
           sx={{
             minWidth: 200,
             height: 48,

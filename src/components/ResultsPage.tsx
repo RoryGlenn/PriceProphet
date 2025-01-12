@@ -7,13 +7,14 @@
 
 import React from 'react';
 import { Container, Paper, Typography, Button, Box } from '@mui/material';
+import { DifficultyLevel } from '../types';
 
 interface ResultsPageProps {
   score: {
     right: number;
     wrong: number;
   };
-  difficulty: string;
+  difficulty: DifficultyLevel;
   onPlayAgain: () => void;
   onBackToMenu: () => void;
 }
@@ -32,8 +33,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
 }) => {
   const calculateAccuracy = () => {
     const total = score.right + score.wrong;
-    if (total === 0) return 0;
-    return Math.round((score.right / total) * 100);
+    return total === 0 ? 0 : Math.round((score.right / total) * 100);
   };
 
   return (
