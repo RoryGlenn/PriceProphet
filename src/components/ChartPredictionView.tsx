@@ -26,19 +26,63 @@ import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
 import { buttonStyles, layoutStyles } from '../styles/theme'; 
 
-/**
- * Props for the ChartPredictionView component
- *
- * @interface ChartPredictionViewProps
- * @property {DifficultyLevel} difficulty - Selected difficulty level
- * @property {Function} onGameEnd - Callback when game ends with final score
- */
-interface ChartPredictionViewProps {
-  /** Selected difficulty level */
-  difficulty: DifficultyLevel;
-  /** Callback function when game ends with final score */
-  onGameEnd: (score: { right: number; wrong: number }) => void;
+/** Time intervals supported by the chart */
+type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | 'D' | 'W' | 'M';
+
+/** Minutes per interval mapping */
+const MINUTES_PER_INTERVAL: Record<TimeInterval, number> = {
+  '1m': 1,
+  '5m': 5,
+  '15m': 15,
+  '1h': 60,
+  '4h': 240,
+  'D': 1440,
+  'W': 1440 * 7,
+  'M': 1440 * 30,
+} as const;
+
+/** Score object type used throughout the application */
+export interface Score {
+  right: number;
+  wrong: number;
 }
+
+/** Props for the ChartPredictionView component */
+interface ChartPredictionViewProps {
+  difficulty: DifficultyLevel;
+  onGameEnd: (score: Score) => void;
+}
+
+/** Type for the historical price data organized by timeframe */
+type HistoricalData = Record<TimeInterval, OhlcBar[]>;
+
+/** Configuration for random data generation */
+interface RandomDataConfig {
+  daysNeeded: number;
+  startPrice: number;
+  volatility: number;
+  drift: number;
+}
+
+/** Default configuration for random data generation */
+const DEFAULT_RANDOM_CONFIG: RandomDataConfig = {
+  daysNeeded: 91,
+  startPrice: 10000,
+  volatility: 0,  // Will be set dynamically
+  drift: 0,       // Will be set dynamically
+} as const;
+
+/** Initial historical data state */
+const INITIAL_HISTORICAL_DATA: HistoricalData = {
+  '1m': [],
+  '5m': [],
+  '15m': [],
+  '1h': [],
+  '4h': [],
+  'D': [],
+  'W': [],
+  'M': [],
+};
 
 /**
  * Main chart prediction interface component.
@@ -54,125 +98,33 @@ interface ChartPredictionViewProps {
  * @param {Function} props.onGameEnd - Callback when game ends with final score
  */
 export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ difficulty, onGameEnd }) => {
-  // Game state variables
-  /** Historical price data organized by timeframe */
-  const [historicalData, setHistoricalData] = useState<{ [key: string]: OhlcBar[] }>({});
-  /** Available price choices for prediction */
+  const [historicalData, setHistoricalData] = useState<HistoricalData>(INITIAL_HISTORICAL_DATA);
   const [priceChoices, setPriceChoices] = useState<string[]>([]);
-  /** Currently selected price choice */
   const [selectedChoice, setSelectedChoice] = useState<string>('');
-  /** Loading state for data generation */
   const [loading, setLoading] = useState(true);
-  /** Game score tracking */
-  const [score, setScore] = useState({ right: 0, wrong: 0 });
-  /** Current attempt number (max 5) */
+  const [score, setScore] = useState<Score>({ right: 0, wrong: 0 });
   const [attempt, setAttempt] = useState(1);
-  /** Whether to show the result of the current guess */
   const [showResult, setShowResult] = useState(false);
-  /** The correct price for the current round */
   const [correctPrice, setCorrectPrice] = useState<string>('');
-  /** Error message for the component */
   const [error, setError] = useState<string | null>(null);
 
-  /** Ref to track component initialization */
   const hasInitialized = React.useRef(false);
 
   /**
-   * Generates random OHLC (Open, High, Low, Close) price data.
-   * Creates 91 days of price data with random volatility and drift parameters.
-   * Uses the RandomOHLC class to generate realistic-looking price movements.
-   *
-   * @returns {Object} An object containing OHLC data organized by timeframe
-   * @property {OhlcRow[]} 1m - One-minute interval data
-   * @property {OhlcRow[]} D - Daily interval data
-   *
-   * @remarks
-   * - Volatility is randomly set between 1-3
-   * - Drift is randomly set between 1-3
-   * - Start price is fixed at 10000
-   * - Generates 91 days to include the future price day
+   * Logs error messages in development mode
    */
-  const generateRandomData = useCallback((): TimeIntervalDict => {
-    try {
-      // Validate and constrain volatility and drift parameters
-      const volatilityValue = Math.max(1, Math.min(3, Math.random() * 2 + 1));
-      const driftValue = Math.max(1, Math.min(3, Math.random() * 2 + 1));
-
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[ChartPredictionView] Generating data with:', {
-          volatility: volatilityValue,
-          drift: driftValue,
-          daysNeeded: 91,
-          startPrice: 10000,
-        });
-      }
-
-      const randOHLC = new RandomOHLC({
-        daysNeeded: 91,
-        startPrice: 10000,
-        volatility: volatilityValue,
-        drift: driftValue,
-      });
-
-      const data = randOHLC.generateOhlcData();
-
-      // Validate the generated data
-      if (!data || typeof data !== 'object') {
-        throw new Error('Generated data is invalid');
-      }
-
-      if (!data['1m'] || !Array.isArray(data['1m']) || data['1m'].length === 0) {
-        throw new Error('Missing or invalid minute data');
-      }
-
-      if (!data['D'] || !Array.isArray(data['D']) || data['D'].length === 0) {
-        throw new Error('Missing or invalid daily data');
-      }
-
-      return data;
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[ChartPredictionView] Error in generateRandomData:', error);
-      }
-      throw error; // Re-throw to be handled by the caller
+  const logError = useCallback((message: string, error: unknown): void => {
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`[ChartPredictionView] ${message}`, error);
     }
   }, []);
 
   /**
-   * Updates the game state with new data and choices
+   * Gets the number of minutes for a given time interval
    */
-  const updateGameState = useCallback(
-    (
-      processedData: { [key: string]: OhlcBar[] },
-      choices: string[],
-      futurePrice: number
-    ) => {
-      setHistoricalData(processedData);
-      setPriceChoices(choices);
-      setCorrectPrice(formatPrice(futurePrice));
-      setSelectedChoice('');
-      setShowResult(false);
-      setLoading(false);
-    },
-    []
-  );
-
-  /**
-   * Sorts OHLC bars by time, handling both number and string timestamps
-   */
-  const sortOhlcBars = useCallback(
-    (a: OhlcBar, b: OhlcBar): number => {
-      if (typeof a.time === 'number' && typeof b.time === 'number') {
-        return a.time - b.time;
-      }
-      if (typeof a.time === 'string' && typeof b.time === 'string') {
-        return a.time.localeCompare(b.time);
-      }
-      // Handle mixed types (shouldn't occur in practice)
-      return String(a.time).localeCompare(String(b.time));
-    },
-    []
-  );
+  const getMinutesForInterval = useCallback((interval: TimeInterval): number => {
+    return MINUTES_PER_INTERVAL[interval];
+  }, []);
 
   /**
    * Formats a raw OHLC row into a bar format suitable for the chart
@@ -192,76 +144,130 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   }, []);
 
   /**
-   * Processes raw OHLC data into timeframe groups.
-   * Takes the 1-minute data and aggregates it into larger timeframes (5m, 15m, 1h, etc.).
-   * Handles partial periods appropriately, especially for weekly and monthly intervals.
-   *
-   * @param data Raw OHLC data organized by timeframe
-   * @returns Processed data ready for chart display
+   * Sorts OHLC bars by time, handling both number and string timestamps
+   */
+  const sortOhlcBars = useCallback(
+    (a: OhlcBar, b: OhlcBar): number => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') {
+        return a.time - b.time;
+      }
+      if (typeof a.time === 'string' && typeof b.time === 'string') {
+        return a.time.localeCompare(b.time);
+      }
+      // Handle mixed types (shouldn't occur in practice)
+      return String(a.time).localeCompare(String(b.time));
+    },
+    []
+  );
+
+  /**
+   * Processes data for a specific interval
+   */
+  const processIntervalData = useCallback((minuteData: OhlcRow[], barsPerInterval: number): OhlcBar[] => {
+    const chunks: OhlcRow[][] = [];
+    
+    for (let i = 0; i < minuteData.length; i += barsPerInterval) {
+      const chunk = minuteData.slice(i, i + barsPerInterval);
+      if (chunk.length > 0) {
+        chunks.push(chunk);
+      }
+    }
+
+    return chunks.map((chunk) => ({
+      time: chunk[0].timestamp as Time,
+      open: chunk[0].open,
+      high: Math.max(...chunk.map((bar) => bar.high)),
+      low: Math.min(...chunk.map((bar) => bar.low)),
+      close: chunk[chunk.length - 1].close,
+    }));
+  }, []);
+
+  /**
+   * Processes raw OHLC data into timeframe groups
    */
   const processOhlcData = useCallback(
-    (data: { [key: string]: OhlcRow[] }) => {
-      // Get the trimmed 1-minute data
+    (data: { [key: string]: OhlcRow[] }): HistoricalData => {
       const minuteData = data['1m'];
-
-      // Define all timeframes we want to display
-      const displayIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'] as const;
-
-      // Initialize the processed data object that will be used by the chart
-      const processedData: { [key: string]: OhlcBar[] } = {};
+      const displayIntervals: TimeInterval[] = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
+      const processedData = { ...INITIAL_HISTORICAL_DATA };
 
       // Process 1-minute data first
       processedData['1m'] = minuteData
         .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, '1m'))
-        .sort((a: OhlcBar, b: OhlcBar) => sortOhlcBars(a, b));
+        .sort(sortOhlcBars);
 
-      // Group minute data into larger timeframes
-      displayIntervals.slice(1).forEach((tf) => {
-        const barsPerInterval = (() => {
-          switch (tf) {
-            case '5m':
-              return 5;
-            case '15m':
-              return 15;
-            case '1h':
-              return 60;
-            case '4h':
-              return 240;
-            case 'D':
-              return 1440;
-            case 'W':
-              return 1440 * 7;
-            case 'M':
-              return 1440 * 30;
-            default:
-              return 1;
-          }
-        })();
-
-        // Group minute data into chunks
-        const chunks: OhlcRow[][] = [];
-        for (let i = 0; i < minuteData.length; i += barsPerInterval) {
-          const chunk = minuteData.slice(i, i + barsPerInterval);
-          // Always include the chunk, even if it's partial
-          // This is especially important for weekly and monthly intervals
-          if (chunk.length > 0) {
-            chunks.push(chunk);
-          }
-        }
-
-        // Convert chunks to OHLC bars
-        processedData[tf] = chunks.map((chunk) => ({
-          time: chunk[0].timestamp as Time,
-          open: chunk[0].open,
-          high: Math.max(...chunk.map((bar) => bar.high)),
-          low: Math.min(...chunk.map((bar) => bar.low)),
-          close: chunk[chunk.length - 1].close,
-        }));
+      // Process other intervals
+      displayIntervals.slice(1).forEach((interval) => {
+        const barsPerInterval = getMinutesForInterval(interval);
+        processedData[interval] = processIntervalData(minuteData, barsPerInterval);
       });
 
       return processedData;
     },
-    [formatOhlcBar, sortOhlcBars]
+    [formatOhlcBar, sortOhlcBars, getMinutesForInterval, processIntervalData]
+  );
+
+  /**
+   * Validates the generated OHLC data
+   */
+  const validateGeneratedData = useCallback((data: unknown): data is TimeIntervalDict => {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Generated data is invalid');
+    }
+
+    const typedData = data as Partial<TimeIntervalDict>;
+    if (!typedData['1m'] || !Array.isArray(typedData['1m']) || typedData['1m'].length === 0) {
+      throw new Error('Missing or invalid minute data');
+    }
+
+    if (!typedData['D'] || !Array.isArray(typedData['D']) || typedData['D'].length === 0) {
+      throw new Error('Missing or invalid daily data');
+    }
+
+    return true;
+  }, []);
+
+  /**
+   * Generates random OHLC data with constrained parameters
+   */
+  const generateRandomData = useCallback((): TimeIntervalDict => {
+    try {
+      const config: RandomDataConfig = {
+        ...DEFAULT_RANDOM_CONFIG,
+        volatility: Math.max(1, Math.min(3, Math.random() * 2 + 1)),
+        drift: Math.max(1, Math.min(3, Math.random() * 2 + 1)),
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[ChartPredictionView] Generating data with:', config);
+      }
+
+      const randOHLC = new RandomOHLC(config);
+      const data = randOHLC.generateOhlcData();
+
+      if (!validateGeneratedData(data)) {
+        throw new Error('Data validation failed');
+      }
+      return data;
+    } catch (error) {
+      logError('Error in generateRandomData:', error);
+      throw error;
+    }
+  }, [validateGeneratedData, logError]);
+
+  /**
+   * Updates the game state with new data and choices
+   */
+  const updateGameState = useCallback(
+    (processedData: HistoricalData, choices: string[], futurePrice: number) => {
+      setHistoricalData(processedData);
+      setPriceChoices(choices);
+      setCorrectPrice(formatPrice(futurePrice));
+      setSelectedChoice('');
+      setShowResult(false);
+      setLoading(false);
+    },
+    []
   );
 
   /**

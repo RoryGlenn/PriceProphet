@@ -6,51 +6,68 @@
  * difficulty selection and game session management.
  *********************************************************************/
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { WelcomePage } from './components/WelcomePage';
 import { ChartPredictionView } from './components/ChartPredictionView';
 import { ResultsPage } from './components/ResultsPage';
 import { DifficultyLevel } from './types';
+import { Score } from './components/ChartPredictionView';
 
+/** Possible game states */
 type GameState = 'welcome' | 'playing' | 'results';
 
-interface GameScore {
-  right: number;
-  wrong: number;
+/** Initial game state configuration */
+interface GameConfig {
+  gameState: GameState;
+  difficulty: DifficultyLevel;
+  score: Score;
 }
 
-const initialScore: GameScore = { right: 0, wrong: 0 };
+/** Initial game configuration */
+const INITIAL_GAME_CONFIG: GameConfig = {
+  gameState: 'welcome',
+  difficulty: 'easy',
+  score: { right: 0, wrong: 0 },
+} as const;
 
+/**
+ * Main application component that manages game state and navigation.
+ */
 export const App: React.FC = () => {
-  const [gameState, setGameState] = useState<GameState>('welcome');
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('easy');
-  const [score, setScore] = useState<GameScore>(initialScore);
+  const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_CONFIG.gameState);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>(INITIAL_GAME_CONFIG.difficulty);
+  const [score, setScore] = useState<Score>(INITIAL_GAME_CONFIG.score);
 
-  const resetScore = useCallback(() => {
-    setScore(initialScore);
+  /** Resets the game state to initial configuration */
+  const resetGameState = useCallback((): void => {
+    setGameState(INITIAL_GAME_CONFIG.gameState);
+    setDifficulty(INITIAL_GAME_CONFIG.difficulty);
+    setScore(INITIAL_GAME_CONFIG.score);
   }, []);
 
-  const handleStartGame = (selectedDifficulty: DifficultyLevel) => {
+  /** Handles game start with selected difficulty */
+  const handleStartGame = useCallback((selectedDifficulty: DifficultyLevel): void => {
     setDifficulty(selectedDifficulty);
-    resetScore();
+    setScore(INITIAL_GAME_CONFIG.score);
     setGameState('playing');
-  };
+  }, []);
 
-  const handleGameEnd = (finalScore: GameScore) => {
+  /** Handles game end with final score */
+  const handleGameEnd = useCallback((finalScore: Score): void => {
     setScore(finalScore);
     setGameState('results');
-  };
+  }, []);
 
-  const handlePlayAgain = () => {
-    resetScore();
+  /** Handles play again request */
+  const handlePlayAgain = useCallback((): void => {
+    setScore(INITIAL_GAME_CONFIG.score);
     setGameState('playing');
-  };
+  }, []);
 
-  const handleBackToMenu = () => {
-    setGameState('welcome');
-    setDifficulty('easy');
-    resetScore();
-  };
+  /** Handles return to menu request */
+  const handleBackToMenu = useCallback((): void => {
+    resetGameState();
+  }, [resetGameState]);
 
   // Development-only state transition logging
   React.useEffect(() => {
@@ -59,19 +76,24 @@ export const App: React.FC = () => {
     }
   }, [gameState, difficulty, score]);
 
-  switch (gameState) {
-    case 'playing':
-      return <ChartPredictionView difficulty={difficulty} onGameEnd={handleGameEnd} />;
-    case 'results':
-      return (
-        <ResultsPage
-          score={score}
-          difficulty={difficulty}
-          onPlayAgain={handlePlayAgain}
-          onBackToMenu={handleBackToMenu}
-        />
-      );
-    default:
-      return <WelcomePage onStartGame={handleStartGame} />;
-  }
+  // Memoize the current component based on game state
+  const currentComponent = useMemo(() => {
+    switch (gameState) {
+      case 'playing':
+        return <ChartPredictionView difficulty={difficulty} onGameEnd={handleGameEnd} />;
+      case 'results':
+        return (
+          <ResultsPage
+            score={score}
+            difficulty={difficulty}
+            onPlayAgain={handlePlayAgain}
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+      default:
+        return <WelcomePage onStartGame={handleStartGame} />;
+    }
+  }, [gameState, difficulty, score, handleGameEnd, handlePlayAgain, handleBackToMenu, handleStartGame]);
+
+  return currentComponent;
 };
