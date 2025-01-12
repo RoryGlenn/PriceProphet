@@ -365,7 +365,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    * Handles the "Next" button click.
    * Either starts a new round or ends the game after 5 attempts.
    */
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (attempt >= 5) {
       onGameEnd(score);
     } else {
@@ -374,7 +374,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
       setSelectedChoice('');
       generateNewRound();
     }
-  };
+  }, [attempt, score, onGameEnd, generateNewRound]);
 
   /**
    * Handles returning to the main menu.
@@ -393,27 +393,43 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    * Handles the user's price prediction submission.
    * Validates the choice and updates the game state accordingly.
    */
-  const handleSubmit = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      e.preventDefault();
+  const handleSubmit = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    console.log('Submit button clicked');
+    console.log('Current state:', {
+      selectedChoice,
+      correctPrice,
+      score,
+      showResult,
+      attempt
+    });
 
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[ChartPredictionView] Submitting prediction:', {
-          selectedChoice,
-          correctPrice,
-        });
-      }
+    if (!selectedChoice) {
+      console.log('No choice selected');
+      setError('Please select a price prediction first.');
+      return;
+    }
 
-      if (selectedChoice === correctPrice) {
-        setScore((prev) => ({ ...prev, right: prev.right + 1 }));
-      } else {
-        setScore((prev) => ({ ...prev, wrong: prev.wrong + 1 }));
-      }
-      setShowResult(true);
-    },
-    [selectedChoice, correctPrice]
-  );
+    console.log('Processing submission:', {
+      selectedChoice,
+      correctPrice,
+      isCorrect: selectedChoice === correctPrice
+    });
+
+    if (selectedChoice === correctPrice) {
+      console.log('Correct answer');
+      setScore(prev => ({ ...prev, right: prev.right + 1 }));
+    } else {
+      console.log('Wrong answer');
+      setScore(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+    }
+
+    console.log('Setting showResult to true');
+    setShowResult(true);
+    console.log('Submit handler completed');
+  };
 
   /**
    * Handles the next round button click.
@@ -421,10 +437,13 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    *
    * @param event - Click event from the button
    */
-  const handleNextClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const handleNextClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     handleNext();
-  };
+  }, [handleNext]);
 
   /**
    * Handles radio button selection change for price choices.
@@ -596,54 +615,62 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
           </RadioGroup>
         </Box>
 
-        {showResult ? (
-          <>
-            <Typography
-              variant="h6"
-              sx={{
-                color: selectedChoice === correctPrice ? '#00F5A0' : '#ef5350',
-                textAlign: 'center',
-                mb: 3,
-              }}
-            >
-              {selectedChoice === correctPrice
-                ? '🎯 Correct! Well done!'
-                : `❌ Wrong! The correct price was ${correctPrice}`}
-            </Typography>
+        <Box sx={{ position: 'relative', zIndex: 10 }}>
+          {showResult ? (
+            <>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: selectedChoice === correctPrice ? '#00F5A0' : '#ef5350',
+                  textAlign: 'center',
+                  mb: 3,
+                }}
+              >
+                {selectedChoice === correctPrice
+                  ? '🎯 Correct! Well done!'
+                  : `❌ Wrong! The correct price was ${correctPrice}`}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={handleNextClick}
+                size="large"
+                sx={{
+                  display: 'block',
+                  margin: '0 auto',
+                  minWidth: 200,
+                  height: 48,
+                  ...buttonStyles.primary,
+                }}
+              >
+                {attempt >= 5 ? 'See Results' : 'Next Round'}
+              </Button>
+            </>
+          ) : (
             <Button
               variant="contained"
-              onClick={handleNextClick}
+              onClick={handleSubmit}
+              type="button"
               size="large"
+              disabled={!selectedChoice}
               sx={{
                 display: 'block',
                 margin: '0 auto',
                 minWidth: 200,
                 height: 48,
                 ...buttonStyles.primary,
+                position: 'relative',
+                zIndex: 100,
+                cursor: !selectedChoice ? 'not-allowed' : 'pointer',
+                pointerEvents: 'auto',
+                '&:hover': {
+                  opacity: 0.9,
+                },
               }}
             >
-              {attempt >= 5 ? 'See Results' : 'Next Round'}
+              Submit Prediction
             </Button>
-          </>
-        ) : (
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-            size="large"
-            disabled={!selectedChoice}
-            sx={{
-              display: 'block',
-              margin: '0 auto',
-              minWidth: 200,
-              height: 48,
-              ...buttonStyles.primary,
-            }}
-          >
-            Submit Prediction
-          </Button>
-        )}
+          )}
+        </Box>
       </Paper>
     </Container>
   );

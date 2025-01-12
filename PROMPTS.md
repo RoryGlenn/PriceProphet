@@ -122,13 +122,6 @@ Improve date/time axis formatting
 Enhance chart customization options
 ```
 
-### Core Functionality
-```
-Implement new data processing features
-Add advanced chart analysis tools
-Improve real-time data handling
-```
-
 ## 6. Maintenance
 
 ### Dependencies
