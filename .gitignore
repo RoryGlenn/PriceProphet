@@ -8,10 +8,12 @@ node_modules/
 *.lcov
 .nyc_output
 
-# Production
+# Production and Build Output
 /build
 /dist
-src/**/dist/
+dist/
+**/dist/
+*.js.map
 
 # Environment files
 .env
