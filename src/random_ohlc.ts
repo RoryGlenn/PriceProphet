@@ -115,20 +115,33 @@ export class RandomOHLC {
 
   /**
    * Create minute-level OHLC data by combining dates and prices.
-   * At the minute level, all OHLC values are initially the same.
+   * Generates high and low values that respect OHLC relationships.
    *
    * @param dates Array of DateTime objects
    * @param prices Array of price values
    * @returns Array of OHLC rows
    */
   private createMinuteOhlcData(dates: DateTime[], prices: number[]): OhlcRow[] {
-    return dates.map((date, idx) => ({
-      timestamp: Math.trunc(date.toSeconds()),
-      open: prices[idx],
-      high: prices[idx],
-      low: prices[idx],
-      close: prices[idx],
-    }));
+    return dates.map((date, idx) => {
+      const open = prices[idx];
+      const close = prices[idx]; // For minute data, open = close
+      const maxPrice = Math.max(open, close);
+      const minPrice = Math.min(open, close);
+      const spread = maxPrice * 0.001; // 0.1% spread
+      
+      // High is at least the max of open/close, plus up to the spread
+      const high = maxPrice + (Math.random() * spread);
+      // Low is at most the min of open/close, minus up to the spread
+      const low = minPrice - (Math.random() * spread);
+
+      return {
+        timestamp: Math.trunc(date.toSeconds()),
+        open,
+        high,
+        low,
+        close,
+      };
+    });
   }
 
   /**

@@ -10,6 +10,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { CssBaseline } from '@mui/material';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 /*
  * Initialize the root element and create a React root.
@@ -25,7 +26,8 @@ const root = createRoot(rootElement);
 /*
  * Render the application with:
  * 1. CssBaseline for consistent base styles
- * 2. Main App component
+ * 2. ErrorBoundary for graceful error handling
+ * 3. Main App component
  *
  * Using React.StrictMode to:
  * - Highlight potential problems
@@ -35,6 +37,8 @@ const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <CssBaseline />
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
