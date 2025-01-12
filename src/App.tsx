@@ -46,7 +46,12 @@ export const App: React.FC = () => {
     setScore({ right: 0, wrong: 0 });
   };
 
-  console.log('App rendering with gameState:', gameState);
+  // Development-only state transition logging
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[App] State transition:', { gameState, difficulty, score });
+    }
+  }, [gameState, difficulty, score]);
 
   switch (gameState) {
     case 'playing':

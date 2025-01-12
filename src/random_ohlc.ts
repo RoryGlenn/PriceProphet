@@ -17,7 +17,7 @@ import { OhlcRow } from './types';
  * Keys are the time interval strings (e.g., '1min', '1H', '1D', etc.),
  * and values are arrays of OHLC rows.
  */
-interface TimeIntervalDict {
+export interface TimeIntervalDict {
   [timeinterval: string]: OhlcRow[];
 }
 
