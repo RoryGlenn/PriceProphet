@@ -54,9 +54,14 @@ export const App: React.FC = () => {
 
   /** Handles game end with final score */
   const handleGameEnd = useCallback((finalScore: Score): void => {
-    setScore(finalScore);
-    setGameState('results');
-  }, []);
+    // If both scores are 0, it means we're going back to menu without showing results
+    if (finalScore.right === 0 && finalScore.wrong === 0) {
+      resetGameState();
+    } else {
+      setScore(finalScore);
+      setGameState('results');
+    }
+  }, [resetGameState]);
 
   /** Handles play again request */
   const handlePlayAgain = useCallback((): void => {

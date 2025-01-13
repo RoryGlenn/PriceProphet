@@ -382,11 +382,12 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    * Prevents default event behavior and event bubbling.
    *
    * @param event - Click event from the button
-   * @see onGameEnd
    */
   const handleBackToMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    onGameEnd(score);
+    event.stopPropagation();
+    // Pass a score with both right and wrong set to 0 to avoid showing results page
+    onGameEnd({ right: 0, wrong: 0 });
   };
 
   /**
