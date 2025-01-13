@@ -94,6 +94,54 @@ describe('RandomOHLC', () => {
   });
 
   describe('error handling', () => {
+    describe('validateOpenPrice', () => {
+      test('should throw DataGenerationError for empty data', () => {
+        const randomOHLC = new RandomOHLC(defaultConfig);
+        const emptyData = {};
+        
+        expect(() => {
+          // @ts-ignore - accessing private method for testing
+          randomOHLC.validateOpenPrice(emptyData);
+        }).toThrow('No data available for validation');
+      });
+
+      test('should throw DataGenerationError for invalid opening price', () => {
+        const randomOHLC = new RandomOHLC(defaultConfig);
+        const invalidData = {
+          '1m': [{ open: NaN, high: 100, low: 90, close: 95, timestamp: 1000 }],
+          '5m': [{ open: NaN, high: 100, low: 90, close: 95, timestamp: 1000 }]
+        };
+        
+        expect(() => {
+          // @ts-ignore - accessing private method for testing
+          randomOHLC.validateOpenPrice(invalidData);
+        }).toThrow('Invalid opening price detected');
+      });
+
+      test('should throw PriceValidationError for mismatched open prices', () => {
+        const randomOHLC = new RandomOHLC(defaultConfig);
+        const mismatchedData = {
+          '1m': [{ open: 100, high: 110, low: 90, close: 105, timestamp: 1000 }],
+          '5m': [{ open: 200, high: 210, low: 190, close: 205, timestamp: 1000 }]
+        };
+        
+        expect(() => {
+          // @ts-ignore - accessing private method for testing
+          randomOHLC.validateOpenPrice(mismatchedData);
+        }).toThrow('Open prices do not match across intervals');
+      });
+
+      test('should throw DataGenerationError for unexpected errors', () => {
+        const randomOHLC = new RandomOHLC(defaultConfig);
+        const invalidData = null;
+        
+        expect(() => {
+          // @ts-ignore - accessing private method for testing
+          randomOHLC.validateOpenPrice(invalidData);
+        }).toThrow('Unexpected error during price validation');
+      });
+    });
+
     test('should throw error for invalid data', () => {
       const config = {
         ...defaultConfig,
