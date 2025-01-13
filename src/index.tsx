@@ -9,7 +9,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { CssBaseline } from '@mui/material';
-import { App } from './App';
+import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 /*
@@ -17,11 +17,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
  * Throws an error if the root element is not found, as it's
  * critical for application mounting.
  */
-const rootElement = document.getElementById('root');
-if (!rootElement) {
+const container = document.getElementById('root');
+if (!container) {
   throw new Error('Failed to find the root element');
 }
-const root = createRoot(rootElement);
+const root = createRoot(container);
 
 /*
  * Render the application with:
@@ -36,8 +36,8 @@ const root = createRoot(rootElement);
  */
 root.render(
   <React.StrictMode>
-    <CssBaseline />
     <ErrorBoundary>
+      <CssBaseline />
       <App />
     </ErrorBoundary>
   </React.StrictMode>

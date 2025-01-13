@@ -6,99 +6,108 @@
  * difficulty selection and game session management.
  *********************************************************************/
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState } from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import { theme } from './styles/theme';
 import { WelcomePage } from './components/WelcomePage';
 import { ChartPredictionView } from './components/ChartPredictionView';
 import { ResultsPage } from './components/ResultsPage';
-import { DifficultyLevel } from './types';
+import { localStorageService } from './services/localStorageService';
 import { Score } from './components/ChartPredictionView';
+import { DifficultyLevel } from './types';
 
-/** Possible game states */
-type GameState = 'welcome' | 'playing' | 'results';
-
-/** Initial game state configuration */
+// Game configuration types
 interface GameConfig {
-  gameState: GameState;
+  isStarted: boolean;
+  isEnded: boolean;
   difficulty: DifficultyLevel;
   score: Score;
 }
 
-/** Initial game configuration */
+// Initial game configuration
 const INITIAL_GAME_CONFIG: GameConfig = {
-  gameState: 'welcome',
+  isStarted: false,
+  isEnded: false,
   difficulty: 'Easy',
   score: { right: 0, wrong: 0 },
-} as const;
+};
 
-/**
- * Main application component that manages game state and navigation.
- */
-export const App: React.FC = () => {
-  const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_CONFIG.gameState);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>(INITIAL_GAME_CONFIG.difficulty);
+function App() {
+  const [gameConfig, setGameConfig] = useState<GameConfig>(INITIAL_GAME_CONFIG);
   const [score, setScore] = useState<Score>(INITIAL_GAME_CONFIG.score);
 
-  /** Resets the game state to initial configuration */
-  const resetGameState = useCallback((): void => {
-    setGameState(INITIAL_GAME_CONFIG.gameState);
-    setDifficulty(INITIAL_GAME_CONFIG.difficulty);
+  const handleGameStart = (difficulty: DifficultyLevel) => {
+    setGameConfig({
+      ...INITIAL_GAME_CONFIG,
+      isStarted: true,
+      difficulty,
+    });
     setScore(INITIAL_GAME_CONFIG.score);
-  }, []);
+  };
 
-  /** Handles game start with selected difficulty */
-  const handleStartGame = useCallback((selectedDifficulty: DifficultyLevel): void => {
-    setDifficulty(selectedDifficulty);
+  const handleGameEnd = (finalScore: Score) => {
+    setGameConfig(prev => ({ ...prev, isEnded: true }));
+    setScore(finalScore);
+
+    // Save game result to localStorage
+    const totalTime = 300; // Example time in seconds, adjust based on actual game duration
+    const gameResult = {
+      difficulty: gameConfig.difficulty.toLowerCase() as 'easy' | 'medium' | 'hard',
+      score: finalScore.right * 100, // Convert to point system
+      guesses: [], // Add actual guesses if you're tracking them
+      finalPrice: 0, // Add actual final price
+      startPrice: 0, // Add actual start price
+      timeInterval: '1h',
+      success: finalScore.right > finalScore.wrong,
+      totalTime
+    };
+
+    localStorageService.saveGame(gameResult);
+  };
+
+  const handlePlayAgain = () => {
+    setGameConfig(prev => ({ ...prev, isEnded: false }));
     setScore(INITIAL_GAME_CONFIG.score);
-    setGameState('playing');
-  }, []);
+  };
 
-  /** Handles game end with final score */
-  const handleGameEnd = useCallback((finalScore: Score): void => {
-    // If both scores are 0, it means we're going back to menu without showing results
-    if (finalScore.right === 0 && finalScore.wrong === 0) {
-      resetGameState();
-    } else {
-      setScore(finalScore);
-      setGameState('results');
-    }
-  }, [resetGameState]);
-
-  /** Handles play again request */
-  const handlePlayAgain = useCallback((): void => {
+  const handleBackToMenu = () => {
+    setGameConfig(INITIAL_GAME_CONFIG);
     setScore(INITIAL_GAME_CONFIG.score);
-    setGameState('playing');
-  }, []);
+  };
 
-  /** Handles return to menu request */
-  const handleBackToMenu = useCallback((): void => {
-    resetGameState();
-  }, [resetGameState]);
-
-  // Development-only state transition logging
-  React.useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug('[App] State transition:', { gameState, difficulty, score });
-    }
-  }, [gameState, difficulty, score]);
-
-  // Memoize the current component based on game state
-  const currentComponent = useMemo(() => {
-    switch (gameState) {
-      case 'playing':
-        return <ChartPredictionView difficulty={difficulty} onGameEnd={handleGameEnd} />;
-      case 'results':
-        return (
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box
+        sx={{
+          bgcolor: 'background.default',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        {!gameConfig.isStarted && (
+          <WelcomePage onStartGame={handleGameStart} />
+        )}
+        {gameConfig.isStarted && !gameConfig.isEnded && (
+          <ChartPredictionView
+            difficulty={gameConfig.difficulty}
+            onGameEnd={handleGameEnd}
+          />
+        )}
+        {gameConfig.isEnded && (
           <ResultsPage
             score={score}
-            difficulty={difficulty}
+            difficulty={gameConfig.difficulty}
             onPlayAgain={handlePlayAgain}
             onBackToMenu={handleBackToMenu}
           />
-        );
-      default:
-        return <WelcomePage onStartGame={handleStartGame} />;
-    }
-  }, [gameState, difficulty, score, handleGameEnd, handlePlayAgain, handleBackToMenu, handleStartGame]);
+        )}
+      </Box>
+    </ThemeProvider>
+  );
+}
 
-  return currentComponent;
-};
+export default App;
