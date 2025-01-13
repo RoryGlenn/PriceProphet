@@ -128,6 +128,52 @@ export const localStorageService = {
       .slice(0, 10);
   },
 
+  // Print all stored data for debugging
+  debugPrintStorage: (): void => {
+    const userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
+    const games = getAllGames();
+    const stats = localStorageService.getUserStats();
+    const leaderboard = localStorageService.getLeaderboard();
+
+    console.group('🎮 PriceProphet Storage Debug');
+    
+    console.group('📱 User Information');
+    console.log('User ID:', userId);
+    console.groupEnd();
+
+    console.group('📊 User Statistics');
+    console.table(stats);
+    console.groupEnd();
+
+    console.group('🏆 Global Leaderboard');
+    console.table(leaderboard);
+    console.groupEnd();
+
+    console.group('🎯 Game History');
+    games.forEach((game, index) => {
+      console.group(`Game ${index + 1} - ${new Date(game.timestamp).toLocaleString()}`);
+      console.log('Difficulty:', game.difficulty);
+      console.log('Score:', game.score);
+      console.log('Success:', game.success);
+      console.log('Time:', game.totalTime, 'seconds');
+      console.log('Start Price:', game.startPrice);
+      console.log('Final Price:', game.finalPrice);
+      console.group('Guesses');
+      game.guesses.forEach((guess, i) => {
+        console.log(`Guess ${i + 1}:`, {
+          price: guess.price,
+          correct: guess.correct,
+          time: new Date(guess.timestamp).toLocaleString()
+        });
+      });
+      console.groupEnd();
+      console.groupEnd();
+    });
+    console.groupEnd();
+
+    console.groupEnd();
+  },
+
   // Clear all stored data (for testing)
   clearData: () => {
     localStorage.removeItem(STORAGE_KEYS.GAMES);

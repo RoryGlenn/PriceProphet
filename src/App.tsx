@@ -6,7 +6,7 @@
  * difficulty selection and game session management.
  *********************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
@@ -76,6 +76,20 @@ function App() {
     setGameConfig(INITIAL_GAME_CONFIG);
     setScore(INITIAL_GAME_CONFIG.score);
   };
+
+  // Add keyboard shortcut for debug
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Check for Ctrl/Cmd + D
+      if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
+        event.preventDefault(); // Prevent browser's default save dialog
+        localStorageService.debugPrintStorage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
 
   return (
     <ThemeProvider theme={theme}>
