@@ -12,6 +12,7 @@
     "@types/node": "^16.18.61",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@types/uuid": "10.0.0",
     "data-forge": "^1.10.1",
     "lightweight-charts": "^4.1.1",
     "luxon": "^3.4.4",
@@ -19,10 +20,12 @@
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
+    "uuid": "11.0.5",
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "7.21.11",
+    "@testing-library/dom": "10.4.0",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.1.0",
     "@types/jest": "29.5.14",
@@ -34,11 +37,15 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "gh-pages": "6.3.0",
+    "husky": "9.1.7",
     "jest": "27.5.1",
+    "lint-staged": "15.3.0",
     "prettier": "^3.1.1",
+    "ts-jest": "29.2.5",
     "typedoc": "^0.25.7"
   },
   "scripts": {
+    "prepare": "husky install",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "start": "react-scripts start",
@@ -96,6 +103,15 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
+    ]
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.{json,css,scss,md}": [
+      "prettier --write"
     ]
   }
 }

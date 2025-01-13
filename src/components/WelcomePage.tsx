@@ -134,7 +134,8 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             margin: '0 auto 40px',
           }}
         >
-          🔮 Greetings, market seer! Divine the sacred candlesticks and forge your path from novice fortune teller to grand oracle. The prophecy begins... ✨📈
+          🔮 Greetings, market seer! Divine the sacred candlesticks and forge your path from novice
+          fortune teller to grand oracle. The prophecy begins... ✨📈
         </Typography>
 
         <RadioGroup value={selectedDifficulty} onChange={handleDifficultyChange} sx={{ mb: 5 }}>

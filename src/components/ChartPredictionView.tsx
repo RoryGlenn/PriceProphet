@@ -20,7 +20,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import { ChartComponent } from './ChartComponent';
-import { RandomOHLC, TimeIntervalDict } from '../random_ohlc';
+import { RandomOHLC, TimeIntervalDict } from '../randomOHLC';
 import { OhlcBar, OhlcRow, DifficultyLevel, TimeInterval, MINUTES_PER_INTERVAL } from '../types';
 import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
@@ -53,8 +53,8 @@ interface RandomDataConfig {
 const DEFAULT_RANDOM_CONFIG: RandomDataConfig = {
   daysNeeded: 91,
   startPrice: 10000,
-  volatility: 0,  // Will be set dynamically
-  drift: 0,       // Will be set dynamically
+  volatility: 0, // Will be set dynamically
+  drift: 0, // Will be set dynamically
 } as const;
 
 /** Initial historical data state */
@@ -64,9 +64,9 @@ const INITIAL_HISTORICAL_DATA: HistoricalData = {
   '15m': [],
   '1h': [],
   '4h': [],
-  'D': [],
-  'W': [],
-  'M': [],
+  D: [],
+  W: [],
+  M: [],
 };
 
 /**
@@ -93,7 +93,10 @@ const getFutureIndex = (difficulty: DifficultyLevel): any => {
  * @param {DifficultyLevel} props.difficulty - Selected difficulty level
  * @param {Function} props.onGameEnd - Callback when game ends with final score
  */
-export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ difficulty, onGameEnd }) => {
+export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
+  difficulty,
+  onGameEnd,
+}) => {
   const [historicalData, setHistoricalData] = useState<HistoricalData>(INITIAL_HISTORICAL_DATA);
   const [priceChoices, setPriceChoices] = useState<string[]>([]);
   const [selectedChoice, setSelectedChoice] = useState<string>('');
@@ -133,9 +136,10 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    * Formats a raw OHLC row into a bar format suitable for the chart
    */
   const formatOhlcBar = useCallback((bar: OhlcRow, timeframe: string): OhlcBar => {
-    const timeValue = timeframe === 'D' || timeframe === 'W' || timeframe === 'M'
-      ? new Date(bar.timestamp * 1000).toISOString().split('T')[0]
-      : bar.timestamp;
+    const timeValue =
+      timeframe === 'D' || timeframe === 'W' || timeframe === 'M'
+        ? new Date(bar.timestamp * 1000).toISOString().split('T')[0]
+        : bar.timestamp;
 
     return {
       time: timeValue as Time,
@@ -149,41 +153,41 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   /**
    * Sorts OHLC bars by time, handling both number and string timestamps
    */
-  const sortOhlcBars = useCallback(
-    (a: OhlcBar, b: OhlcBar): number => {
-      if (typeof a.time === 'number' && typeof b.time === 'number') {
-        return a.time - b.time;
-      }
-      if (typeof a.time === 'string' && typeof b.time === 'string') {
-        return a.time.localeCompare(b.time);
-      }
-      // Handle mixed types (shouldn't occur in practice)
-      return String(a.time).localeCompare(String(b.time));
-    },
-    []
-  );
+  const sortOhlcBars = useCallback((a: OhlcBar, b: OhlcBar): number => {
+    if (typeof a.time === 'number' && typeof b.time === 'number') {
+      return a.time - b.time;
+    }
+    if (typeof a.time === 'string' && typeof b.time === 'string') {
+      return a.time.localeCompare(b.time);
+    }
+    // Handle mixed types (shouldn't occur in practice)
+    return String(a.time).localeCompare(String(b.time));
+  }, []);
 
   /**
    * Processes data for a specific interval
    */
-  const processIntervalData = useCallback((minuteData: OhlcRow[], barsPerInterval: number): OhlcBar[] => {
-    const chunks: OhlcRow[][] = [];
+  const processIntervalData = useCallback(
+    (minuteData: OhlcRow[], barsPerInterval: number): OhlcBar[] => {
+      const chunks: OhlcRow[][] = [];
 
-    for (let i = 0; i < minuteData.length; i += barsPerInterval) {
-      const chunk = minuteData.slice(i, i + barsPerInterval);
-      if (chunk.length > 0) {
-        chunks.push(chunk);
+      for (let i = 0; i < minuteData.length; i += barsPerInterval) {
+        const chunk = minuteData.slice(i, i + barsPerInterval);
+        if (chunk.length > 0) {
+          chunks.push(chunk);
+        }
       }
-    }
 
-    return chunks.map((chunk) => ({
-      time: chunk[0].timestamp as Time,
-      open: chunk[0].open,
-      high: Math.max(...chunk.map((bar) => bar.high)),
-      low: Math.min(...chunk.map((bar) => bar.low)),
-      close: chunk[chunk.length - 1].close,
-    }));
-  }, []);
+      return chunks.map((chunk) => ({
+        time: chunk[0].timestamp as Time,
+        open: chunk[0].open,
+        high: Math.max(...chunk.map((bar) => bar.high)),
+        low: Math.min(...chunk.map((bar) => bar.low)),
+        close: chunk[chunk.length - 1].close,
+      }));
+    },
+    []
+  );
 
   /**
    * Processes raw OHLC data into timeframe groups
@@ -256,12 +260,13 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
       const sortedData: Record<string, OhlcRow[]> = {};
 
       // Sort the keys and copy the data
-      Object.keys(data).sort().forEach(key => {
-        sortedData[key] = data[key];
-      });
+      Object.keys(data)
+        .sort()
+        .forEach((key) => {
+          sortedData[key] = data[key];
+        });
 
       return sortedData as TimeIntervalDict;
-
     } catch (error) {
       logError('Error in generateRandomData:', error);
       throw error;
@@ -343,7 +348,10 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   // Initialize game on mount or when difficulty changes
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.debug('[ChartPredictionView] useEffect running, hasInitialized:', hasInitialized.current);
+      console.debug(
+        '[ChartPredictionView] useEffect running, hasInitialized:',
+        hasInitialized.current
+      );
     }
 
     if (!hasInitialized.current) {
@@ -386,6 +394,9 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   const handleBackToMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+
+    // Don't showsresults page if selected from the ChartPredictionView
+
     // Pass a score with both right and wrong set to 0 to avoid showing results page
     onGameEnd({ right: 0, wrong: 0 });
   };
@@ -398,19 +409,16 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
     event.preventDefault();
     event.stopPropagation();
 
-
-
     if (!selectedChoice) {
       // console.log('No choice selected');
       setError('Please select a price prediction first.');
       return;
     }
 
-
     if (selectedChoice === correctPrice) {
-      setScore(prev => ({ ...prev, right: prev.right + 1 }));
+      setScore((prev) => ({ ...prev, right: prev.right + 1 }));
     } else {
-      setScore(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+      setScore((prev) => ({ ...prev, wrong: prev.wrong + 1 }));
     }
 
     setShowResult(true);
@@ -422,13 +430,16 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    *
    * @param event - Click event from the button
    */
-  const handleNextClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    handleNext();
-  }, [handleNext]);
+  const handleNextClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      handleNext();
+    },
+    [handleNext]
+  );
 
   /**
    * Handles radio button selection change for price choices.
@@ -473,11 +484,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
           >
             Predict the Future Price
           </Typography>
-          <Button
-            variant="outlined"
-            onClick={handleBackToMenu}
-            sx={buttonStyles.outline}
-          >
+          <Button variant="outlined" onClick={handleBackToMenu} sx={buttonStyles.outline}>
             Back to Menu
           </Button>
         </Box>

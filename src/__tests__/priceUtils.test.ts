@@ -17,7 +17,7 @@ describe('generatePriceChoices', () => {
   it('generates 4 unique price choices', () => {
     const actualPrice = 1000;
     const choices = generatePriceChoices(actualPrice);
-    
+
     expect(choices.length).toBe(4);
     // Check all choices are unique
     const uniqueChoices = new Set(choices);
@@ -28,18 +28,18 @@ describe('generatePriceChoices', () => {
     const actualPrice = 1000;
     const choices = generatePriceChoices(actualPrice);
     const formattedActual = formatPrice(actualPrice);
-    
+
     expect(choices).toContain(formattedActual);
   });
 
   it('generates reasonable price variations', () => {
     const actualPrice = 1000;
     const choices = generatePriceChoices(actualPrice);
-    
-    choices.forEach(choice => {
+
+    choices.forEach((choice) => {
       const price = parseFloat(choice.replace(/[$,]/g, ''));
       // Check that variations are within expected range (±5%)
       expect(Math.abs((price - actualPrice) / actualPrice)).toBeLessThanOrEqual(0.05);
     });
   });
-}); 
+});

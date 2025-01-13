@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
@@ -16,7 +15,7 @@ describe('ErrorBoundary', () => {
   beforeAll(() => {
     console.error = jest.fn();
   });
-  
+
   afterAll(() => {
     console.error = originalError;
   });
@@ -74,4 +73,4 @@ describe('ErrorBoundary', () => {
     fireEvent.click(screen.getByRole('button', { name: /reload page/i }));
     expect(reloadMock).toHaveBeenCalled();
   });
-}); 
+});

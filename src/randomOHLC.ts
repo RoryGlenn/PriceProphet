@@ -73,7 +73,7 @@ export class RandomOHLC {
     this.drift = config.drift;
     this.timeIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
 
-    console.info('Initializing RandomOHLC with config:', config);
+    // console.info('Initializing RandomOHLC with config:', config);
   }
 
   /**
@@ -98,7 +98,7 @@ export class RandomOHLC {
   private generateMinuteData(): OhlcRow[] {
     const minutesInDay = 1440;
     const numMinutes = this.daysNeeded * minutesInDay;
-    console.info(`Generating ${this.daysNeeded} days of data (${numMinutes} minutes).`);
+    // console.info(`Generating ${this.daysNeeded} days of data (${numMinutes} minutes).`);
 
     const randPrices = this.generateRandomPrices(numMinutes);
     const dates = this.generateDateRange(numMinutes);
@@ -148,11 +148,11 @@ export class RandomOHLC {
       const maxPrice = Math.max(open, close);
       const minPrice = Math.min(open, close);
       const spread = maxPrice * 0.001; // 0.1% spread
-      
+
       // High is at least the max of open/close, plus up to the spread
-      const high = maxPrice + (Math.random() * spread);
+      const high = maxPrice + Math.random() * spread;
       // Low is at most the min of open/close, minus up to the spread
-      const low = minPrice - (Math.random() * spread);
+      const low = minPrice - Math.random() * spread;
 
       return {
         timestamp: Math.trunc(date.toSeconds()),
@@ -176,11 +176,11 @@ export class RandomOHLC {
     const minuteDrift = this.drift / minutesInYear;
 
     console.info('Generating GBM prices...');
-    console.info(`  Start price: $${this.startPrice}`);
-    console.info(
-      `  Per-minute volatility: ${minuteVol.toPrecision(6)} (annual: ${this.volatility})`
-    );
-    console.info(`  Per-minute drift: ${minuteDrift.toPrecision(6)} (annual: ${this.drift})`);
+    // console.info(`  Start price: $${this.startPrice}`);
+    // console.info(
+    //   `  Per-minute volatility: ${minuteVol.toPrecision(6)} (annual: ${this.volatility})`
+    // );
+    // console.info(`  Per-minute drift: ${minuteDrift.toPrecision(6)} (annual: ${this.drift})`);
 
     return { minuteVol, minuteDrift };
   }
@@ -202,7 +202,7 @@ export class RandomOHLC {
       prices.push(price);
     }
 
-    this.logPriceStats(prices);
+    // this.logPriceStats(prices);
     return prices;
   }
 
@@ -358,11 +358,9 @@ export class RandomOHLC {
 
       if (mismatchedIntervals.length > 0) {
         const details = mismatchedIntervals
-          .map(item => `${item.interval}: ${item.open}`)
+          .map((item) => `${item.interval}: ${item.open}`)
           .join(', ');
-        throw new PriceValidationError(
-          `Open prices do not match across intervals: ${details}`
-        );
+        throw new PriceValidationError(`Open prices do not match across intervals: ${details}`);
       }
     } catch (error) {
       if (error instanceof PriceValidationError || error instanceof DataGenerationError) {

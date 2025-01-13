@@ -18,9 +18,9 @@ export const MINUTES_PER_INTERVAL: Record<TimeInterval, number> = {
   '15m': 15,
   '1h': 60,
   '4h': 240,
-  'D': 1440,
-  'W': 1440 * 7,
-  'M': 1440 * 30,
+  D: 1440,
+  W: 1440 * 7,
+  M: 1440 * 30,
 } as const;
 
 /**
@@ -80,4 +80,3 @@ export interface OhlcRow {
  * - hard: Predict 30 days into the future
  */
 export type DifficultyLevel = 'Easy' | 'Medium' | 'Hard';
-

@@ -17,6 +17,7 @@ import { ResultsPage } from './components/ResultsPage';
 import { localStorageService } from './services/localStorageService';
 import { Score } from './components/ChartPredictionView';
 import { DifficultyLevel } from './types';
+import { userInfoService } from './services/userInfoService';
 
 // Game configuration types
 interface GameConfig {
@@ -48,7 +49,7 @@ function App() {
   };
 
   const handleGameEnd = (finalScore: Score) => {
-    setGameConfig(prev => ({ ...prev, isEnded: true }));
+    setGameConfig((prev) => ({ ...prev, isEnded: true }));
     setScore(finalScore);
 
     // Save game result to localStorage
@@ -61,14 +62,14 @@ function App() {
       startPrice: 0, // Add actual start price
       timeInterval: '1h',
       success: finalScore.right > finalScore.wrong,
-      totalTime
+      totalTime,
     };
 
     localStorageService.saveGame(gameResult);
   };
 
   const handlePlayAgain = () => {
-    setGameConfig(prev => ({ ...prev, isEnded: false }));
+    setGameConfig((prev) => ({ ...prev, isEnded: false }));
     setScore(INITIAL_GAME_CONFIG.score);
   };
 
@@ -77,7 +78,12 @@ function App() {
     setScore(INITIAL_GAME_CONFIG.score);
   };
 
-  // Add keyboard shortcut for debug
+  // Initialize user profile
+  useEffect(() => {
+    userInfoService.initializeUser();
+  }, []);
+
+  // Debug keyboard shortcut
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Check for Ctrl/Cmd + D
@@ -99,17 +105,12 @@ function App() {
           bgcolor: 'background.default',
           minHeight: '100vh',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
         }}
       >
-        {!gameConfig.isStarted && (
-          <WelcomePage onStartGame={handleGameStart} />
-        )}
+        {!gameConfig.isStarted && <WelcomePage onStartGame={handleGameStart} />}
         {gameConfig.isStarted && !gameConfig.isEnded && (
-          <ChartPredictionView
-            difficulty={gameConfig.difficulty}
-            onGameEnd={handleGameEnd}
-          />
+          <ChartPredictionView difficulty={gameConfig.difficulty} onGameEnd={handleGameEnd} />
         )}
         {gameConfig.isEnded && (
           <ResultsPage

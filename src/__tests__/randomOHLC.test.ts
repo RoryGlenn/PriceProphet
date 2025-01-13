@@ -1,4 +1,4 @@
-import { RandomOHLC, PriceValidationError, DataGenerationError } from '../random_ohlc';
+import { RandomOHLC, PriceValidationError, DataGenerationError } from '../randomOHLC';
 
 describe('RandomOHLC', () => {
   // Default test configuration
@@ -37,7 +37,7 @@ describe('RandomOHLC', () => {
     it('should generate data for all time intervals', () => {
       const data = randOHLC.generateOhlcData();
       const expectedIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
-      expectedIntervals.forEach(interval => {
+      expectedIntervals.forEach((interval) => {
         expect(data[interval]).toBeDefined();
         expect(Array.isArray(data[interval])).toBe(true);
         expect(data[interval].length).toBeGreaterThan(0);
@@ -60,7 +60,7 @@ describe('RandomOHLC', () => {
     describe('OHLC price relationships', () => {
       const randomOHLC = new RandomOHLC(defaultConfig);
       const data = randomOHLC.generateOhlcData();
-      const allBars = Object.values(data).flatMap(timeframeData => timeframeData);
+      const allBars = Object.values(data).flatMap((timeframeData) => timeframeData);
 
       test.each(allBars)('bar should maintain valid OHLC relationships', (bar) => {
         expect(bar.high).toBeGreaterThanOrEqual(Math.min(bar.open, bar.close));
@@ -71,7 +71,7 @@ describe('RandomOHLC', () => {
 
     it('should generate timestamps in correct order', () => {
       const data = randOHLC.generateOhlcData();
-      Object.values(data).forEach(timeframeData => {
+      Object.values(data).forEach((timeframeData) => {
         for (let i = 1; i < timeframeData.length; i++) {
           expect(timeframeData[i].timestamp).toBeGreaterThan(timeframeData[i - 1].timestamp);
         }
@@ -85,7 +85,7 @@ describe('RandomOHLC', () => {
 
     it('should maintain price continuity between bars', () => {
       const data = randOHLC.generateOhlcData();
-      Object.values(data).forEach(timeframeData => {
+      Object.values(data).forEach((timeframeData) => {
         for (let i = 1; i < timeframeData.length; i++) {
           expect(timeframeData[i].open).toBe(timeframeData[i - 1].close);
         }
@@ -98,7 +98,7 @@ describe('RandomOHLC', () => {
       test('should throw DataGenerationError for empty data', () => {
         const randomOHLC = new RandomOHLC(defaultConfig);
         const emptyData = {};
-        
+
         expect(() => {
           // @ts-ignore - accessing private method for testing
           randomOHLC.validateOpenPrice(emptyData);
@@ -109,9 +109,9 @@ describe('RandomOHLC', () => {
         const randomOHLC = new RandomOHLC(defaultConfig);
         const invalidData = {
           '1m': [{ open: NaN, high: 100, low: 90, close: 95, timestamp: 1000 }],
-          '5m': [{ open: NaN, high: 100, low: 90, close: 95, timestamp: 1000 }]
+          '5m': [{ open: NaN, high: 100, low: 90, close: 95, timestamp: 1000 }],
         };
-        
+
         expect(() => {
           // @ts-ignore - accessing private method for testing
           randomOHLC.validateOpenPrice(invalidData);
@@ -122,9 +122,9 @@ describe('RandomOHLC', () => {
         const randomOHLC = new RandomOHLC(defaultConfig);
         const mismatchedData = {
           '1m': [{ open: 100, high: 110, low: 90, close: 105, timestamp: 1000 }],
-          '5m': [{ open: 200, high: 210, low: 190, close: 205, timestamp: 1000 }]
+          '5m': [{ open: 200, high: 210, low: 190, close: 205, timestamp: 1000 }],
         };
-        
+
         expect(() => {
           // @ts-ignore - accessing private method for testing
           randomOHLC.validateOpenPrice(mismatchedData);
@@ -134,7 +134,7 @@ describe('RandomOHLC', () => {
       test('should throw DataGenerationError for unexpected errors', () => {
         const randomOHLC = new RandomOHLC(defaultConfig);
         const invalidData = null;
-        
+
         expect(() => {
           // @ts-ignore - accessing private method for testing
           randomOHLC.validateOpenPrice(invalidData);
@@ -174,24 +174,24 @@ describe('RandomOHLC', () => {
       const data = randOHLC.generateOhlcData();
 
       // Check if daily high/low encompasses minute data
-      const validDailyBars = data['D'].filter(dailyBar => {
+      const validDailyBars = data['D'].filter((dailyBar) => {
         const minuteBarsForDay = data['1m'].filter(
-          minuteBar =>
+          (minuteBar) =>
             minuteBar.timestamp >= dailyBar.timestamp &&
             minuteBar.timestamp < dailyBar.timestamp + 86400
         );
         return minuteBarsForDay.length > 0;
       });
 
-      validDailyBars.forEach(dailyBar => {
+      validDailyBars.forEach((dailyBar) => {
         const minuteBarsForDay = data['1m'].filter(
-          minuteBar =>
+          (minuteBar) =>
             minuteBar.timestamp >= dailyBar.timestamp &&
             minuteBar.timestamp < dailyBar.timestamp + 86400
         );
-        const minuteHigh = Math.max(...minuteBarsForDay.map(bar => bar.high));
-        const minuteLow = Math.min(...minuteBarsForDay.map(bar => bar.low));
-        
+        const minuteHigh = Math.max(...minuteBarsForDay.map((bar) => bar.high));
+        const minuteLow = Math.min(...minuteBarsForDay.map((bar) => bar.low));
+
         expect(dailyBar.high).toBeGreaterThanOrEqual(minuteHigh);
         expect(dailyBar.low).toBeLessThanOrEqual(minuteLow);
       });
@@ -213,4 +213,4 @@ describe('RandomOHLC', () => {
       // Weekly and monthly bars will depend on the date range
     });
   });
-}); 
+});

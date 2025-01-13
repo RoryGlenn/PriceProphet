@@ -20,23 +20,24 @@ const mockChart = {
   remove: jest.fn().mockReturnThis(),
 };
 
-export const createChart = jest.fn((container: HTMLElement) => {
+export const createChart = jest.fn().mockImplementation((container: HTMLElement) => {
   if (!container) {
     throw new Error('Container element is required');
   }
-  
+
   // Reset all mock implementations for each test
-  mockChart.addCandlestickSeries.mockImplementation(() => mockCandlestickSeries);
-  mockChart.timeScale.mockImplementation(() => mockTimeScale);
-  mockChart.applyOptions.mockReturnThis();
-  mockChart.resize.mockReturnThis();
-  mockChart.remove.mockReturnThis();
-  
-  mockCandlestickSeries.setData.mockReturnThis();
-  mockCandlestickSeries.applyOptions.mockReturnThis();
-  
-  mockTimeScale.fitContent.mockReturnThis();
-  mockTimeScale.applyOptions.mockReturnThis();
-  
+  mockChart.addCandlestickSeries.mockClear();
+  mockChart.timeScale.mockClear();
+  mockChart.applyOptions.mockClear();
+  mockChart.resize.mockClear();
+  mockChart.remove.mockClear();
+
+  mockCandlestickSeries.setData.mockClear();
+  mockCandlestickSeries.applyOptions.mockClear();
+
+  mockTimeScale.fitContent.mockClear();
+  mockTimeScale.applyOptions.mockClear();
+
+  // Return the mockChart object directly
   return mockChart;
-}); 
+});
