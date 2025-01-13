@@ -5,7 +5,7 @@
  * Manages chart state, data generation, user interactions, and scoring.
  *********************************************************************/
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Container,
   Paper,
@@ -21,25 +21,10 @@ import {
 } from '@mui/material';
 import { ChartComponent } from './ChartComponent';
 import { RandomOHLC, TimeIntervalDict } from '../random_ohlc';
-import { OhlcBar, OhlcRow, DifficultyLevel } from '../types';
+import { OhlcBar, OhlcRow, DifficultyLevel, TimeInterval, MINUTES_PER_INTERVAL } from '../types';
 import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
-import { buttonStyles, layoutStyles } from '../styles/theme'; 
-
-/** Time intervals supported by the chart */
-type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | 'D' | 'W' | 'M';
-
-/** Minutes per interval mapping */
-const MINUTES_PER_INTERVAL: Record<TimeInterval, number> = {
-  '1m': 1,
-  '5m': 5,
-  '15m': 15,
-  '1h': 60,
-  '4h': 240,
-  'D': 1440,
-  'W': 1440 * 7,
-  'M': 1440 * 30,
-} as const;
+import { buttonStyles, layoutStyles } from '../styles/theme';
 
 /** Score object type used throughout the application */
 export interface Score {
@@ -85,6 +70,17 @@ const INITIAL_HISTORICAL_DATA: HistoricalData = {
 };
 
 /**
+ * Gets the number of days into the future to predict based on difficulty.
+ * - Easy: 1 day
+ * - Medium: 7 days
+ * - Hard: 30 days
+ */
+const getFutureIndex = (difficulty: DifficultyLevel): any => {
+  return difficulty === 'easy' ? 1 : difficulty === 'medium' ? 7 : 30;
+};
+
+/**
+ * Main chart prediction interface component.
  * Main chart prediction interface component.
  * Handles the core prediction logic including:
  * - Data generation using RandomOHLC
@@ -113,11 +109,18 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   /**
    * Logs error messages in development mode
    */
-  const logError = useCallback((message: string, error: unknown): void => {
+  const logError = React.useCallback((message: string, error: unknown): void => {
     if (process.env.NODE_ENV === 'development') {
       console.error(`[ChartPredictionView] ${message}`, error);
     }
   }, []);
+
+  /**
+   * Clears any displayed error messages
+   */
+  const handleErrorClose = () => {
+    setError(null);
+  };
 
   /**
    * Gets the number of minutes for a given time interval
@@ -165,7 +168,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    */
   const processIntervalData = useCallback((minuteData: OhlcRow[], barsPerInterval: number): OhlcBar[] => {
     const chunks: OhlcRow[][] = [];
-    
+
     for (let i = 0; i < minuteData.length; i += barsPerInterval) {
       const chunk = minuteData.slice(i, i + barsPerInterval);
       if (chunk.length > 0) {
@@ -186,7 +189,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
    * Processes raw OHLC data into timeframe groups
    */
   const processOhlcData = useCallback(
-    (data: { [key: string]: OhlcRow[] }): HistoricalData => {
+    (data: TimeIntervalDict): HistoricalData => {
       const minuteData = data['1m'];
       const displayIntervals: TimeInterval[] = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
       const processedData = { ...INITIAL_HISTORICAL_DATA };
@@ -210,7 +213,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   /**
    * Validates the generated OHLC data
    */
-  const validateGeneratedData = useCallback((data: unknown): data is TimeIntervalDict => {
+  const validateGeneratedData = React.useCallback((data: unknown): data is TimeIntervalDict => {
     if (!data || typeof data !== 'object') {
       throw new Error('Generated data is invalid');
     }
@@ -248,7 +251,17 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
       if (!validateGeneratedData(data)) {
         throw new Error('Data validation failed');
       }
-      return data;
+
+      // Create a new object with the same data but explicitly typed
+      const sortedData: Record<string, OhlcRow[]> = {};
+
+      // Sort the keys and copy the data
+      Object.keys(data).sort().forEach(key => {
+        sortedData[key] = data[key];
+      });
+
+      return sortedData as TimeIntervalDict;
+
     } catch (error) {
       logError('Error in generateRandomData:', error);
       throw error;
@@ -258,7 +271,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   /**
    * Updates the game state with new data and choices
    */
-  const updateGameState = useCallback(
+  const updateGameState = React.useCallback(
     (processedData: HistoricalData, choices: string[], futurePrice: number) => {
       setHistoricalData(processedData);
       setPriceChoices(choices);
@@ -271,95 +284,80 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   );
 
   /**
-   * Determines how many days into the future to predict based on difficulty.
-   * - Easy: 1 day
-   * - Medium: 7 days
-   * - Hard: 30 days
-   *
-   * @param difficulty Selected game difficulty
-   * @returns Number of days to look ahead
-   */
-  const getFutureIndex = useCallback((difficulty: DifficultyLevel): number => {
-    switch (difficulty.toLowerCase()) {
-      case 'easy':
-        return 1;
-      case 'medium':
-        return 7;
-      case 'hard':
-        return 30;
-      default:
-        console.error(`Invalid difficulty level: ${difficulty}`);
-        return 1;
-    }
-  }, []);
-
-  /**
-   * Clears any displayed error messages
-   */
-  const handleErrorClose = () => {
-    setError(null);
-  };
-
-  /**
    * Generates a new round of the game.
-   * Creates new random price data, processes it into timeframes,
-   * and sets up the choices for the player.
-   *
-   * Handles error cases and updates loading state appropriately.
    */
-  const generateNewRound = useCallback(() => {
+  const generateNewRound = React.useCallback((): Promise<void> => {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[ChartPredictionView] Generating new round');
+    }
+
     setLoading(true);
     setError(null);
 
-    try {
-      // Get raw data
-      const rawData = generateRandomData();
+    return new Promise<void>((resolve, reject) => {
+      try {
+        // Get raw data
+        const rawData = generateRandomData();
 
-      if (!rawData || !rawData['D'] || !rawData['1m']) {
-        throw new Error('Invalid data generated');
-      }
-
-      // Calculate how many minute bars to remove based on difficulty
-      const daysToRemove = getFutureIndex(difficulty);
-      const minutesToRemove = daysToRemove * 1440; // 1440 minutes per day
-
-      // Store the future price before trimming
-      const futurePrice = rawData['D'][rawData['D'].length - 1]?.close;
-      if (typeof futurePrice !== 'number') {
-        throw new Error('Invalid future price');
-      }
-
-      // Remove future data from 1-minute data first
-      rawData['1m'] = rawData['1m'].slice(0, -minutesToRemove);
-
-      // Now process the trimmed data into all timeframes
-      const processedData = processOhlcData(rawData);
-
-      const choices = generatePriceChoices(futurePrice);
-
-      // Update game state
-      updateGameState(processedData, choices, futurePrice);
-    } catch (error) {
-      setLoading(false);
-      
-      if (error instanceof Error) {
-        const errorMessage = error.message.includes('Open prices do not match')
-          ? 'Data generation failed due to price mismatch. Please try again.'
-          : 'An unexpected error occurred. Please try again.';
-        
-        setError(errorMessage);
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[ChartPredictionView] Error generating round:', error);
+        if (!rawData || !rawData['D'] || !rawData['1m']) {
+          throw new Error('Invalid data generated');
         }
+
+        // Calculate how many minute bars to remove based on difficulty
+        const daysToRemove = getFutureIndex(difficulty);
+        const minutesToRemove = daysToRemove * 1440; // 1440 minutes per day
+
+        // Store the future price before trimming
+        const futurePrice = rawData['D'][rawData['D'].length - 1]?.close;
+        if (typeof futurePrice !== 'number') {
+          throw new Error('Invalid future price');
+        }
+
+        // Remove future data from 1-minute data first
+        rawData['1m'] = rawData['1m'].slice(0, -minutesToRemove);
+
+        // Now process the trimmed data into all timeframes
+        const processedData = processOhlcData(rawData);
+
+        const choices = generatePriceChoices(futurePrice);
+
+        // Update game state
+        updateGameState(processedData, choices, futurePrice);
+        resolve();
+      } catch (error) {
+        setLoading(false);
+
+        if (error instanceof Error) {
+          const errorMessage = error.message.includes('Open prices do not match')
+            ? 'Data generation failed due to price mismatch. Please try again.'
+            : 'An unexpected error occurred. Please try again.';
+
+          setError(errorMessage);
+          logError('Error generating round:', error);
+        }
+        reject(error);
       }
-    }
-  }, [difficulty, processOhlcData, getFutureIndex, updateGameState, generateRandomData]);
+    });
+  }, [difficulty, updateGameState, processOhlcData, generateRandomData, logError]);
 
   // Initialize game on mount or when difficulty changes
-  useEffect(() => {
-    generateNewRound();
-    hasInitialized.current = true;
-  }, [generateNewRound, difficulty]);
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[ChartPredictionView] useEffect running, hasInitialized:', hasInitialized.current);
+    }
+
+    if (!hasInitialized.current) {
+      setLoading(true);
+      generateNewRound()
+        .then(() => {
+          setLoading(false);
+          hasInitialized.current = true;
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    }
+  }, [generateNewRound]);
 
   /**
    * Handles the "Next" button click.
@@ -372,7 +370,9 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
       setAttempt((prev) => prev + 1);
       setShowResult(false);
       setSelectedChoice('');
-      generateNewRound();
+      generateNewRound().catch(() => {
+        // Error is already handled in generateNewRound
+      });
     }
   }, [attempt, score, onGameEnd, generateNewRound]);
 
@@ -396,39 +396,23 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
   const handleSubmit = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    
-    console.log('Submit button clicked');
-    console.log('Current state:', {
-      selectedChoice,
-      correctPrice,
-      score,
-      showResult,
-      attempt
-    });
+
+
 
     if (!selectedChoice) {
-      console.log('No choice selected');
+      // console.log('No choice selected');
       setError('Please select a price prediction first.');
       return;
     }
 
-    console.log('Processing submission:', {
-      selectedChoice,
-      correctPrice,
-      isCorrect: selectedChoice === correctPrice
-    });
 
     if (selectedChoice === correctPrice) {
-      console.log('Correct answer');
       setScore(prev => ({ ...prev, right: prev.right + 1 }));
     } else {
-      console.log('Wrong answer');
       setScore(prev => ({ ...prev, wrong: prev.wrong + 1 }));
     }
 
-    console.log('Setting showResult to true');
     setShowResult(true);
-    console.log('Submit handler completed');
   };
 
   /**
@@ -465,9 +449,9 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
 
   return (
     <Container maxWidth={false} sx={layoutStyles.mainContainer}>
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
         onClose={handleErrorClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
@@ -538,7 +522,9 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({ diffic
             zIndex: 1,
           }}
         >
-          <ChartComponent data={historicalData} defaultInterval="D" />
+          {!loading && Object.keys(historicalData).length > 0 && (
+            <ChartComponent data={historicalData} defaultInterval="D" />
+          )}
         </Box>
 
         <Box

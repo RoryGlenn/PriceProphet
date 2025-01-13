@@ -121,7 +121,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             mb: 1,
           }}
         >
-          Test your price prediction skills!
+          Unlock Your Powers of Market Prophecy! ✨
         </Typography>
 
         <Typography
@@ -134,8 +134,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
             margin: '0 auto 40px',
           }}
         >
-          Analyze historical price charts and predict future price movements. Choose your difficulty
-          level to begin.
+          🔮 Greetings, market seer! Divine the sacred candlesticks and forge your path from novice fortune teller to grand oracle. The prophecy begins... ✨📈
         </Typography>
 
         <RadioGroup value={selectedDifficulty} onChange={handleDifficultyChange} sx={{ mb: 5 }}>

@@ -8,6 +8,21 @@
 
 import { Time } from 'lightweight-charts';
 
+/** Time intervals supported by the chart */
+export type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | 'D' | 'W' | 'M';
+
+/** Minutes per interval mapping */
+export const MINUTES_PER_INTERVAL: Record<TimeInterval, number> = {
+  '1m': 1,
+  '5m': 5,
+  '15m': 15,
+  '1h': 60,
+  '4h': 240,
+  'D': 1440,
+  'W': 1440 * 7,
+  'M': 1440 * 30,
+} as const;
+
 /**
  * Raw OHLC data structure used internally.
  * This format is used by the RandomOHLC class for data generation
@@ -65,3 +80,12 @@ export interface OhlcRow {
  * - hard: Predict 30 days into the future
  */
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
+// /**
+//  * Map of difficulty levels to the number of days into the future to predict.
+//  */
+// export const difficultyMap: Record<DifficultyLevel, number> = {
+//   easy: 1,
+//   medium: 7,
+//   hard: 30,
+// };

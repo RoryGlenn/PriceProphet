@@ -98,6 +98,7 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | undefined>();
   const [interval, setInterval] = useState(defaultInterval);
   const previousDataRef = useRef<string>('');
+  const hasInitializedRef = useRef(false);
 
   /**
    * Memoized data processing to prevent unnecessary recalculations.
@@ -285,13 +286,14 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
 
     // Check if data has actually changed to prevent unnecessary updates
     const currentDataString = JSON.stringify(processedData);
-    if (currentDataString === previousDataRef.current) return;
+    if (currentDataString === previousDataRef.current && hasInitializedRef.current) return;
     previousDataRef.current = currentDataString;
 
     // Batch the updates for better performance
     requestAnimationFrame(() => {
       if (series) {
         series.setData(processedData);
+        hasInitializedRef.current = true;
 
         // Fit content in the next frame for smoother rendering
         requestAnimationFrame(() => {
