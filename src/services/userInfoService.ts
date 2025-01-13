@@ -43,40 +43,48 @@ const generateUsername = (info: SystemInfo): string => {
 /**
  * Collects system information
  */
-const collectSystemInfo = (): SystemInfo => {
-  const now = new Date().toISOString();
+// const collectSystemInfo = (): SystemInfo => {
+//   const now = new Date().toISOString();
 
-  return {
-    hostname: window.location.hostname,
-    platform: navigator.platform,
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screenResolution: `${window.screen.width}x${window.screen.height}`,
-    firstVisit: now,
-    lastVisit: now,
-  };
-};
+//   return {
+//     hostname: window.location.hostname,
+//     platform: navigator.platform,
+//     userAgent: navigator.userAgent,
+//     language: navigator.language,
+//     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+//     screenResolution: `${window.screen.width}x${window.screen.height}`,
+//     firstVisit: now,
+//     lastVisit: now,
+//   };
+// };
 
 export const userInfoService = {
   /**
    * Initializes or retrieves user profile
    */
   initializeUser: (): UserProfile => {
-    // Check if user profile exists
-    const existingProfile = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    const existingProfile = userInfoService.getCurrentUser();
     if (existingProfile) {
-      const profile = JSON.parse(existingProfile);
-      // Update last visit time
-      profile.systemInfo.lastVisit = new Date().toISOString();
-      localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-      return profile;
+      return userInfoService.updateLastVisit(existingProfile);
     }
 
+    // Default userId if generation fails
+    const userId = v4() || 'default-user-' + Date.now();
+
+    const systemInfo = {
+      firstVisit: new Date().toISOString(),
+      lastVisit: new Date().toISOString(),
+      hostname: window.location.hostname,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      language: navigator.language,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      screenResolution: `${window.screen.width}x${window.screen.height}`,
+    };
+
     // Create new profile
-    const systemInfo = collectSystemInfo();
     const newProfile: UserProfile = {
-      userId: v4(),
+      userId,
       username: generateUsername(systemInfo),
       systemInfo,
     };
@@ -120,5 +128,21 @@ export const userInfoService = {
    */
   clearProfile: (): void => {
     localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+  },
+
+  /**
+   * Updates the last visit time of the user's profile
+   */
+  updateLastVisit: (profile: UserProfile): UserProfile => {
+    const updatedProfile = {
+      ...profile,
+      systemInfo: {
+        ...profile.systemInfo,
+        lastVisit: new Date().toISOString(),
+      },
+    };
+
+    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updatedProfile));
+    return updatedProfile;
   },
 };
