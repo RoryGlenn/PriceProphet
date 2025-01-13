@@ -26,7 +26,7 @@ interface GameConfig {
 /** Initial game configuration */
 const INITIAL_GAME_CONFIG: GameConfig = {
   gameState: 'welcome',
-  difficulty: 'easy',
+  difficulty: 'Easy',
   score: { right: 0, wrong: 0 },
 } as const;
 

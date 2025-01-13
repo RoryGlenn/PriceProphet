@@ -76,7 +76,7 @@ const INITIAL_HISTORICAL_DATA: HistoricalData = {
  * - Hard: 30 days
  */
 const getFutureIndex = (difficulty: DifficultyLevel): any => {
-  return difficulty === 'easy' ? 1 : difficulty === 'medium' ? 7 : 30;
+  return difficulty === 'Easy' ? 1 : difficulty === 'Medium' ? 7 : 30;
 };
 
 /**

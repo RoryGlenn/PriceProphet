@@ -79,13 +79,5 @@ export interface OhlcRow {
  * - medium: Predict 7 days into the future
  * - hard: Predict 30 days into the future
  */
-export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+export type DifficultyLevel = 'Easy' | 'Medium' | 'Hard';
 
-// /**
-//  * Map of difficulty levels to the number of days into the future to predict.
-//  */
-// export const difficultyMap: Record<DifficultyLevel, number> = {
-//   easy: 1,
-//   medium: 7,
-//   hard: 30,
-// };

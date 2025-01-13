@@ -31,9 +31,9 @@ interface WelcomePageProps {
  * Descriptions for each difficulty level
  */
 const difficultyDescriptions: Record<DifficultyLevel, string> = {
-  easy: 'Predict the price 1 day into the future',
-  medium: 'Predict the price 1 week into the future',
-  hard: 'Predict the price 1 month into the future',
+  Easy: 'Predict the price 1 day into the future',
+  Medium: 'Predict the price 1 week into the future',
+  Hard: 'Predict the price 1 month into the future',
 };
 
 /**
@@ -44,7 +44,7 @@ const difficultyDescriptions: Record<DifficultyLevel, string> = {
  * @param props.onStartGame - Callback function called when the user starts the game
  */
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
-  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('easy');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('Easy');
 
   // Track component mounting
   useEffect(() => {

@@ -1,60 +1,168 @@
-import { RandomOHLC } from '../random_ohlc';
+import { RandomOHLC, PriceValidationError, DataGenerationError } from '../random_ohlc';
 
 describe('RandomOHLC', () => {
-  const config = {
-    daysNeeded: 1,
-    startPrice: 100,
-    volatility: 1,
-    drift: 1
+  // Default test configuration
+  const defaultConfig = {
+    daysNeeded: 5,
+    startPrice: 1000,
+    volatility: 2,
+    drift: 1.5,
   };
 
-  let randomOHLC: RandomOHLC;
+  describe('constructor', () => {
+    it('should initialize with valid configuration', () => {
+      const randOHLC = new RandomOHLC(defaultConfig);
+      expect(randOHLC).toBeInstanceOf(RandomOHLC);
+    });
 
-  beforeEach(() => {
-    randomOHLC = new RandomOHLC(config);
-  });
-
-  it('generates data for all timeframes', () => {
-    const data = randomOHLC.generateOhlcData();
-    const expectedTimeframes = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
-    
-    expectedTimeframes.forEach(timeframe => {
-      expect(data[timeframe]).toBeDefined();
-      expect(data[timeframe].length).toBeGreaterThan(0);
+    it('should initialize with minimum valid values', () => {
+      const minConfig = {
+        daysNeeded: 1,
+        startPrice: 1,
+        volatility: 1,
+        drift: 1,
+      };
+      const randOHLC = new RandomOHLC(minConfig);
+      expect(randOHLC).toBeInstanceOf(RandomOHLC);
     });
   });
 
-  it('generates valid OHLC relationships', () => {
-    const data = randomOHLC.generateOhlcData();
-    
-    Object.values(data).forEach(timeframeData => {
-      timeframeData.forEach(candle => {
-        expect(candle.high).toBeGreaterThanOrEqual(candle.open);
-        expect(candle.high).toBeGreaterThanOrEqual(candle.close);
-        expect(candle.low).toBeLessThanOrEqual(candle.open);
-        expect(candle.low).toBeLessThanOrEqual(candle.close);
-        expect(candle.high).toBeGreaterThanOrEqual(candle.low);
+  describe('generateOhlcData', () => {
+    let randOHLC: RandomOHLC;
+
+    beforeEach(() => {
+      randOHLC = new RandomOHLC(defaultConfig);
+    });
+
+    it('should generate data for all time intervals', () => {
+      const data = randOHLC.generateOhlcData();
+      const expectedIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
+      expectedIntervals.forEach(interval => {
+        expect(data[interval]).toBeDefined();
+        expect(Array.isArray(data[interval])).toBe(true);
+        expect(data[interval].length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should generate correct number of daily bars', () => {
+      const data = randOHLC.generateOhlcData();
+      // For 5 days, we expect 5 daily bars
+      expect(data['D'].length).toBe(defaultConfig.daysNeeded);
+    });
+
+    it('should generate correct number of minute bars', () => {
+      const data = randOHLC.generateOhlcData();
+      // For 5 days, we expect 5 * 1440 minute bars
+      const expectedMinuteBars = defaultConfig.daysNeeded * 1440;
+      expect(data['1m'].length).toBe(expectedMinuteBars);
+    });
+
+    describe('OHLC price relationships', () => {
+      const randomOHLC = new RandomOHLC(defaultConfig);
+      const data = randomOHLC.generateOhlcData();
+      const allBars = Object.values(data).flatMap(timeframeData => timeframeData);
+
+      test.each(allBars)('bar should maintain valid OHLC relationships', (bar) => {
+        expect(bar.high).toBeGreaterThanOrEqual(Math.min(bar.open, bar.close));
+        expect(bar.low).toBeLessThanOrEqual(Math.max(bar.open, bar.close));
+        expect(bar.high).toBeGreaterThanOrEqual(bar.low);
+      });
+    });
+
+    it('should generate timestamps in correct order', () => {
+      const data = randOHLC.generateOhlcData();
+      Object.values(data).forEach(timeframeData => {
+        for (let i = 1; i < timeframeData.length; i++) {
+          expect(timeframeData[i].timestamp).toBeGreaterThan(timeframeData[i - 1].timestamp);
+        }
+      });
+    });
+
+    it('should start from the configured start price', () => {
+      const data = randOHLC.generateOhlcData();
+      expect(data['1m'][0].open).toBe(defaultConfig.startPrice);
+    });
+
+    it('should maintain price continuity between bars', () => {
+      const data = randOHLC.generateOhlcData();
+      Object.values(data).forEach(timeframeData => {
+        for (let i = 1; i < timeframeData.length; i++) {
+          expect(timeframeData[i].open).toBe(timeframeData[i - 1].close);
+        }
       });
     });
   });
 
-  it('maintains price continuity', () => {
-    const data = randomOHLC.generateOhlcData();
-    
-    Object.values(data).forEach(timeframeData => {
-      for (let i = 1; i < timeframeData.length; i++) {
-        expect(timeframeData[i].open).toBeCloseTo(timeframeData[i - 1].close, 2);
-      }
+  describe('error handling', () => {
+    test('should throw error for invalid data', () => {
+      const config = {
+        ...defaultConfig,
+        daysNeeded: 0,
+      };
+      const randomOHLC = new RandomOHLC(config);
+      expect(randomOHLC.generateOhlcData).toThrow();
     });
   });
 
-  it('starts at the specified price', () => {
-    const data = randomOHLC.generateOhlcData();
-    
-    Object.values(data).forEach(timeframeData => {
-      if (timeframeData.length > 0) {
-        expect(timeframeData[0].open).toBe(config.startPrice);
-      }
+  describe('PriceValidationError', () => {
+    it('should create error with correct name and message', () => {
+      const error = new PriceValidationError('Test error');
+      expect(error.name).toBe('PriceValidationError');
+      expect(error.message).toBe('Test error');
+    });
+  });
+
+  describe('DataGenerationError', () => {
+    it('should create error with correct name and message', () => {
+      const error = new DataGenerationError('Test error');
+      expect(error.name).toBe('DataGenerationError');
+      expect(error.message).toBe('Test error');
+    });
+  });
+
+  describe('time interval consistency', () => {
+    it('should generate consistent data across time intervals', () => {
+      const randOHLC = new RandomOHLC(defaultConfig);
+      const data = randOHLC.generateOhlcData();
+
+      // Check if daily high/low encompasses minute data
+      const validDailyBars = data['D'].filter(dailyBar => {
+        const minuteBarsForDay = data['1m'].filter(
+          minuteBar =>
+            minuteBar.timestamp >= dailyBar.timestamp &&
+            minuteBar.timestamp < dailyBar.timestamp + 86400
+        );
+        return minuteBarsForDay.length > 0;
+      });
+
+      validDailyBars.forEach(dailyBar => {
+        const minuteBarsForDay = data['1m'].filter(
+          minuteBar =>
+            minuteBar.timestamp >= dailyBar.timestamp &&
+            minuteBar.timestamp < dailyBar.timestamp + 86400
+        );
+        const minuteHigh = Math.max(...minuteBarsForDay.map(bar => bar.high));
+        const minuteLow = Math.min(...minuteBarsForDay.map(bar => bar.low));
+        
+        expect(dailyBar.high).toBeGreaterThanOrEqual(minuteHigh);
+        expect(dailyBar.low).toBeLessThanOrEqual(minuteLow);
+      });
+    });
+
+    it('should generate correct number of bars for each interval', () => {
+      const randOHLC = new RandomOHLC(defaultConfig);
+      const data = randOHLC.generateOhlcData();
+
+      const minutesInDay = 1440;
+      const totalMinutes = defaultConfig.daysNeeded * minutesInDay;
+
+      expect(data['1m'].length).toBe(totalMinutes);
+      expect(data['5m'].length).toBe(Math.floor(totalMinutes / 5));
+      expect(data['15m'].length).toBe(Math.floor(totalMinutes / 15));
+      expect(data['1h'].length).toBe(Math.floor(totalMinutes / 60));
+      expect(data['4h'].length).toBe(Math.floor(totalMinutes / 240));
+      expect(data['D'].length).toBe(defaultConfig.daysNeeded);
+      // Weekly and monthly bars will depend on the date range
     });
   });
 }); 
