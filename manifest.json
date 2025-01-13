@@ -1,0 +1,8 @@
+{
+  "short_name": "PriceProphet",
+  "name": "PriceProphet - Financial Forecasting Game",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#0F2027"
+} 
