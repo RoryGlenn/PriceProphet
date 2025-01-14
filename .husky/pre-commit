@@ -1,8 +1,4 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
-# Run lint-staged to format and lint staged files
 npx lint-staged
-
-# Run full validation suite
 npm run validate 

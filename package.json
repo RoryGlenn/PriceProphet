@@ -46,7 +46,7 @@
     "typedoc": "^0.25.7"
   },
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "husky",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "start": "react-scripts start",
