@@ -55,8 +55,9 @@ function App() {
     // Save game result to localStorage
     const totalTime = 300; // Example time in seconds, adjust based on actual game duration
     const gameResult = {
-      difficulty: gameConfig.difficulty.toLowerCase() as 'easy' | 'medium' | 'hard',
-      score: finalScore.right * 100, // Convert to point system
+      difficulty: (gameConfig.difficulty.charAt(0).toUpperCase() +
+        gameConfig.difficulty.slice(1)) as DifficultyLevel,
+      score: score.right * 100,
       guesses: [], // Add actual guesses if you're tracking them
       finalPrice: 0, // Add actual final price
       startPrice: 0, // Add actual start price

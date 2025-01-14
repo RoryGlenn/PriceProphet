@@ -1,4 +1,4 @@
-import { GameResult } from '../types';
+import { GameResult, DifficultyLevel } from '../types';
 import { localStorageService } from '../services/localStorageService';
 import { userInfoService } from '../services/userInfoService';
 
@@ -29,7 +29,7 @@ describe('localStorageService', () => {
   };
 
   const mockGameData: Omit<GameResult, 'userId' | 'username' | 'timestamp'> = {
-    difficulty: 'medium',
+    difficulty: 'Medium' as DifficultyLevel,
     score: 100,
     guesses: [
       {

@@ -84,7 +84,7 @@ export type DifficultyLevel = 'Easy' | 'Medium' | 'Hard';
 export interface GameResult {
   userId: string;
   username: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: DifficultyLevel;
   score: number;
   guesses: Array<{
     timestamp: Date;
