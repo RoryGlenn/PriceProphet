@@ -2,6 +2,11 @@ import { GameResult, DifficultyLevel } from '../types';
 import { localStorageService } from '../services/localStorageService';
 import { userInfoService } from '../services/userInfoService';
 
+// Get STORAGE_KEYS from the implementation file
+const STORAGE_KEYS = {
+  GAMES: 'priceProphet_games',
+};
+
 // Mock userInfoService
 jest.mock('../services/userInfoService', () => ({
   userInfoService: {
@@ -454,6 +459,115 @@ describe('localStorageService', () => {
       expect(leaderboard[1].highestScore).toBe(100);
       expect(leaderboard[0].averageScore).toBe(100);
       expect(leaderboard[1].averageScore).toBe(100);
+    });
+  });
+
+  describe('debugPrintStorage', () => {
+    beforeEach(() => {
+      // Mock console methods
+      jest.spyOn(console, 'group').mockImplementation();
+      jest.spyOn(console, 'groupEnd').mockImplementation();
+      jest.spyOn(console, 'log').mockImplementation();
+      jest.spyOn(console, 'table').mockImplementation();
+    });
+
+    afterEach(() => {
+      // Restore console methods
+      jest.restoreAllMocks();
+    });
+
+    it('should print debug information to console', () => {
+      // Setup test data
+      const games = [
+        {
+          ...mockGameData,
+          userId: mockUser.userId,
+          username: mockUser.username,
+          timestamp: new Date('2024-01-01T12:00:00Z'),
+        },
+      ];
+      localStorageMock.setItem('priceProphet_games', JSON.stringify(games));
+
+      // Call debugPrintStorage
+      localStorageService.debugPrintStorage();
+
+      // Verify console calls
+      expect(console.group).toHaveBeenCalledWith('🎮 PriceProphet Storage Debug');
+      expect(console.group).toHaveBeenCalledWith('👤 User Profile');
+      expect(console.group).toHaveBeenCalledWith('📊 User Statistics');
+      expect(console.group).toHaveBeenCalledWith('🏆 Global Leaderboard');
+      expect(console.group).toHaveBeenCalledWith('🎯 Game History');
+      expect(console.group).toHaveBeenCalledWith(expect.stringContaining('Game 1'));
+      expect(console.group).toHaveBeenCalledWith('Guesses');
+
+      expect(console.log).toHaveBeenCalledWith('Profile:', mockUser);
+      expect(console.log).toHaveBeenCalledWith('User:', mockUser.username);
+      expect(console.log).toHaveBeenCalledWith('Difficulty:', mockGameData.difficulty);
+      expect(console.log).toHaveBeenCalledWith('Score:', mockGameData.score);
+      expect(console.log).toHaveBeenCalledWith('Success:', mockGameData.success);
+      expect(console.log).toHaveBeenCalledWith('Time:', mockGameData.totalTime, 'seconds');
+      expect(console.log).toHaveBeenCalledWith('Start Price:', mockGameData.startPrice);
+      expect(console.log).toHaveBeenCalledWith('Final Price:', mockGameData.finalPrice);
+
+      expect(console.table).toHaveBeenCalledTimes(2); // Stats and leaderboard
+
+      // Verify the number of groupEnd calls matches the number of group calls
+      const groupCalls = (console.group as jest.Mock).mock.calls.length;
+      expect(console.groupEnd).toHaveBeenCalledTimes(groupCalls);
+    });
+  });
+
+  describe('clearData', () => {
+    it('should clear all stored data', () => {
+      // Setup initial data
+      const games = [
+        {
+          ...mockGameData,
+          userId: mockUser.userId,
+          username: mockUser.username,
+          timestamp: new Date('2024-01-01T12:00:00Z'),
+        },
+      ];
+      localStorageMock.setItem('priceProphet_games', JSON.stringify(games));
+
+      // Call clearData
+      localStorageService.clearData();
+
+      // Verify localStorage was cleared
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEYS.GAMES);
+      expect(userInfoService.clearProfile).toHaveBeenCalled();
+
+      // Verify data is cleared
+      expect(localStorageService.getUserGames()).toHaveLength(0);
+      expect(localStorageService.getLeaderboard()).toHaveLength(0);
+    });
+  });
+
+  describe('getCurrentUserId initialization', () => {
+    it('should initialize user if no current user exists', () => {
+      // Mock getCurrentUser to return null first time
+      (userInfoService.getCurrentUser as jest.Mock).mockReturnValueOnce(null);
+
+      // Mock initializeUser to return a new user
+      const newUser = { userId: 'new-user', username: 'NewUser' };
+      (userInfoService.initializeUser as jest.Mock).mockReturnValueOnce(newUser);
+
+      // Save a game to trigger getCurrentUserId
+      localStorageService.saveGame(mockGameData);
+
+      // Verify initializeUser was called
+      expect(userInfoService.initializeUser).toHaveBeenCalled();
+
+      // Verify the game was saved with the new user's ID
+      const savedGamesStr = localStorageMock.getItem('priceProphet_games');
+      const savedGames = JSON.parse(savedGamesStr || '[]');
+      expect(savedGames[0].userId).toBe(newUser.userId);
+
+      // Test getCurrentUserId directly
+      (userInfoService.getCurrentUser as jest.Mock).mockReturnValueOnce(null);
+      (userInfoService.initializeUser as jest.Mock).mockReturnValueOnce(newUser);
+      localStorageService.getUserGames();
+      expect(userInfoService.initializeUser).toHaveBeenCalled();
     });
   });
 });
