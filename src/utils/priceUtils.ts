@@ -38,25 +38,16 @@ export function generatePriceChoices(actualPrice: number): string[] {
   const formattedActual = formatPrice(actualPrice);
 
   /*
-   * Generate three alternative prices by applying random percentage changes.
-   * We use different ranges for up and down movements to create realistic
-   * but challenging options:
-   * - Upward changes: 2-5%
-   * - Downward changes: 1.5-4%
+   * Generate three alternative prices by applying random percentage changes
+   * between -20% and +20% of the actual price
    */
   const alternatives = [];
   for (let i = 0; i < 3; i++) {
-    // Randomly decide if price should be higher or lower
-    const isHigher = Math.random() > 0.5;
-
-    // Calculate percentage change
-    const percentChange = isHigher
-      ? Math.random() * 3 + 2 // 2-5% higher
-      : Math.random() * 2.5 + 1.5; // 1.5-4% lower
+    // Generate random percentage between -20 and +20
+    const percentChange = Math.random() * 40 - 20;
 
     // Apply the change
-    const multiplier = isHigher ? 1 + percentChange / 100 : 1 - percentChange / 100;
-
+    const multiplier = 1 + percentChange / 100;
     const altPrice = formatPrice(actualPrice * multiplier);
     alternatives.push(altPrice);
   }

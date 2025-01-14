@@ -38,8 +38,8 @@ describe('generatePriceChoices', () => {
 
     choices.forEach((choice) => {
       const price = parseFloat(choice.replace(/[$,]/g, ''));
-      // Check that variations are within expected range (±5%)
-      expect(Math.abs((price - actualPrice) / actualPrice)).toBeLessThanOrEqual(0.05);
+      // Check that variations are within expected range (±20%)
+      expect(Math.abs((price - actualPrice) / actualPrice)).toBeLessThanOrEqual(0.2);
     });
   });
 });
