@@ -80,3 +80,37 @@ export interface OhlcRow {
  * - hard: Predict 30 days into the future
  */
 export type DifficultyLevel = 'Easy' | 'Medium' | 'Hard';
+
+export interface GameResult {
+  userId: string;
+  username: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  score: number;
+  guesses: Array<{
+    timestamp: Date;
+    price: number;
+    correct: boolean;
+  }>;
+  finalPrice: number;
+  startPrice: number;
+  timeInterval: string;
+  success: boolean;
+  totalTime: number;
+  timestamp: Date;
+}
+
+export interface UserStats {
+  totalGames: number;
+  averageScore: number;
+  highestScore: number;
+  successRate: number;
+  averageTime: number;
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  username: string;
+  highestScore: number;
+  totalGames: number;
+  averageScore: number;
+}

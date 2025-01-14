@@ -1,5 +1,4 @@
 import { userInfoService, UserProfile, SystemInfo } from '../services/userInfoService';
-import * as uuid from 'uuid';
 
 // Mock uuid
 jest.mock('uuid', () => ({

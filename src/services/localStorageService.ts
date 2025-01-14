@@ -1,37 +1,5 @@
 import { userInfoService } from './userInfoService';
-
-export interface GameResult {
-  userId: string;
-  username: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  score: number;
-  guesses: Array<{
-    timestamp: Date;
-    price: number;
-    correct: boolean;
-  }>;
-  finalPrice: number;
-  startPrice: number;
-  timeInterval: string;
-  success: boolean;
-  totalTime: number;
-  timestamp: Date;
-}
-
-export interface UserStats {
-  totalGames: number;
-  averageScore: number;
-  highestScore: number;
-  successRate: number;
-  averageTime: number;
-}
-
-export interface LeaderboardEntry {
-  userId: string;
-  highestScore: number;
-  totalGames: number;
-  averageScore: number;
-}
+import { GameResult, UserStats, LeaderboardEntry } from '../types';
 
 const STORAGE_KEYS = {
   GAMES: 'priceProphet_games',
