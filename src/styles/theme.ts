@@ -1,12 +1,48 @@
+/*********************************************************************
+ * theme.ts
+ *
+ * Material-UI theme configuration and global style definitions.
+ * Provides a consistent design system across the application with
+ * custom color schemes, typography, and component styles.
+ *
+ * Features:
+ * - Custom color palette with primary/secondary colors
+ * - Dark mode optimization
+ * - Glass morphism effects
+ * - Gradient backgrounds
+ * - Custom button variants
+ * - Responsive layout utilities
+ *
+ * @module theme
+ * @requires @mui/material
+ *********************************************************************/
+
 import { createTheme, SxProps, Theme } from '@mui/material';
 
-/** Button style configuration */
+/**
+ * Button style configuration interface.
+ * Defines custom button variants with consistent styling.
+ *
+ * @interface ButtonStylesType
+ * @property {SxProps<Theme>} primary - Gradient-based primary button style
+ * @property {SxProps<Theme>} outline - Bordered secondary button style
+ */
 export interface ButtonStylesType {
   primary: SxProps<Theme>;
   outline: SxProps<Theme>;
 }
 
-/** Layout style configuration */
+/**
+ * Layout style configuration interface.
+ * Common layout patterns and containers for consistent spacing
+ * and component arrangement.
+ *
+ * @interface LayoutStylesType
+ * @property {SxProps<Theme>} flexCenter - Center-aligned flex container
+ * @property {SxProps<Theme>} flexBetween - Space-between flex container
+ * @property {SxProps<Theme>} mainContainer - Full-viewport container with background
+ * @property {SxProps<Theme>} glassPanel - Frosted glass effect container
+ */
 export interface LayoutStylesType {
   flexCenter: SxProps<Theme>;
   flexBetween: SxProps<Theme>;
@@ -14,7 +50,18 @@ export interface LayoutStylesType {
   glassPanel: SxProps<Theme>;
 }
 
-/** Theme color configuration */
+/**
+ * Theme color configuration interface.
+ * Defines the complete color system including primary/secondary colors,
+ * backgrounds, text, and borders.
+ *
+ * @interface ThemeColors
+ * @property {string} primary - Primary brand color (#00F5A0)
+ * @property {string} secondary - Secondary brand color (#00D9F5)
+ * @property {Object} background - Background color configurations
+ * @property {Object} text - Text color configurations
+ * @property {Object} border - Border color configurations
+ */
 interface ThemeColors {
   primary: string;
   secondary: string;
@@ -32,7 +79,16 @@ interface ThemeColors {
   };
 }
 
-/** Theme colors */
+/**
+ * Theme color palette definition.
+ * Implements a dark mode optimized color scheme with:
+ * - Vibrant primary/secondary colors for emphasis
+ * - Dark, semi-transparent backgrounds for depth
+ * - High-contrast text for readability
+ * - Subtle borders for structure
+ *
+ * @constant {ThemeColors} colors
+ */
 const colors: ThemeColors = {
   primary: '#00F5A0',
   secondary: '#00D9F5',
@@ -50,7 +106,19 @@ const colors: ThemeColors = {
   },
 } as const;
 
-/** Common button styles */
+/**
+ * Common button style configurations.
+ * Provides two main button variants:
+ * 1. Primary: Gradient background with shadow
+ * 2. Outline: Bordered with hover effects
+ *
+ * Features:
+ * - Smooth hover transitions
+ * - Custom disabled states
+ * - Consistent typography
+ *
+ * @constant {ButtonStylesType} buttonStyles
+ */
 export const buttonStyles: ButtonStylesType = {
   primary: {
     background: `linear-gradient(45deg, ${colors.primary} 30%, ${colors.secondary} 90%)`,
@@ -78,7 +146,21 @@ export const buttonStyles: ButtonStylesType = {
   },
 };
 
-/** Common layout styles */
+/**
+ * Common layout style configurations.
+ * Provides reusable layout patterns and containers:
+ * - Flex containers for alignment
+ * - Main container with gradient background
+ * - Glass panel with frosted effect
+ *
+ * The glass panel effect is achieved using:
+ * - Semi-transparent background
+ * - Backdrop filter for blur
+ * - Gradient border
+ * - Custom shadow
+ *
+ * @constant {LayoutStylesType} layoutStyles
+ */
 export const layoutStyles: LayoutStylesType = {
   flexCenter: {
     display: 'flex',
@@ -121,7 +203,21 @@ export const layoutStyles: LayoutStylesType = {
   },
 };
 
-/** Theme configuration */
+/**
+ * Material-UI theme configuration.
+ * Customizes the default Material-UI theme with:
+ * - Custom color palette
+ * - Typography system
+ * - Component style overrides
+ *
+ * Features:
+ * - Dark mode optimization
+ * - Custom font stack
+ * - Modified typography variants
+ * - Button style customization
+ *
+ * @constant {Theme} theme
+ */
 export const theme = createTheme({
   palette: {
     mode: 'dark',

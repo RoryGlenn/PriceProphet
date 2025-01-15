@@ -1,12 +1,19 @@
 /*********************************************************************
- *  random_ohlc.ts
+ * randomOHLC.ts
  *
- *  Generate synthetic OHLC price data using Geometric Brownian Motion (GBM).
- *  Features:
- *  - Generates minute-level data using GBM
- *  - Resamples data to multiple time intervals (1min to 1M)
- *  - Ensures data consistency across all time intervals
- *  - Uses Luxon for precise datetime handling
+ * Generates synthetic OHLC (Open, High, Low, Close) price data using
+ * Geometric Brownian Motion (GBM). This module provides realistic price
+ * simulation for testing and demonstration purposes.
+ *
+ * Features:
+ * - Generates minute-level data using GBM for realistic price movements
+ * - Resamples data to multiple time intervals (1min to 1M)
+ * - Ensures data consistency across all time intervals
+ * - Uses Luxon for precise datetime handling
+ * - Validates price continuity and relationships
+ *
+ * @module randomOHLC
+ * @description Price data generation using Geometric Brownian Motion
  *********************************************************************/
 
 import { DateTime } from 'luxon';
@@ -14,15 +21,26 @@ import { OhlcRow } from './types';
 
 /**
  * Dictionary containing OHLC data for each time interval.
- * Keys are the time interval strings (e.g., '1min', '1H', '1D', etc.),
+ * Keys are the time interval strings (e.g., '1m', '5m', '1h', etc.),
  * and values are arrays of OHLC rows.
+ *
+ * @interface TimeIntervalDict
+ * @example
+ * {
+ *   '1m': [{ timestamp: 1234567890, open: 100, high: 101, low: 99, close: 100.5 }, ...],
+ *   '1h': [{ timestamp: 1234567890, open: 100, high: 105, low: 98, close: 102 }, ...]
+ * }
  */
 export interface TimeIntervalDict {
   [timeinterval: string]: OhlcRow[];
 }
 
 /**
- * Custom error class for price validation errors
+ * Custom error class for price validation errors.
+ * Thrown when price relationships or continuity are violated.
+ *
+ * @class PriceValidationError
+ * @extends Error
  */
 export class PriceValidationError extends Error {
   constructor(message: string) {
@@ -32,7 +50,11 @@ export class PriceValidationError extends Error {
 }
 
 /**
- * Custom error class for data generation errors
+ * Custom error class for data generation errors.
+ * Thrown when there are issues during the data generation process.
+ *
+ * @class DataGenerationError
+ * @extends Error
  */
 export class DataGenerationError extends Error {
   constructor(message: string) {
@@ -43,7 +65,16 @@ export class DataGenerationError extends Error {
 
 /**
  * Generates synthetic OHLC price data using Geometric Brownian Motion.
- * Supports multiple time intervals and ensures data consistency.
+ * This class provides methods to generate realistic price data with
+ * configurable parameters for volatility and drift.
+ *
+ * Features:
+ * - Minute-level data generation using GBM
+ * - Multiple time interval support (1m to 1M)
+ * - Price continuity validation
+ * - Realistic OHLC relationships
+ *
+ * @class RandomOHLC
  */
 export class RandomOHLC {
   private readonly daysNeeded: number;
@@ -53,13 +84,21 @@ export class RandomOHLC {
   private readonly timeIntervals: string[];
 
   /**
-   * Initialize the RandomOHLC instance.
+   * Initialize the RandomOHLC instance with configuration parameters.
    *
-   * @param config Configuration object containing:
-   *   daysNeeded - Number of days of data to generate
-   *   startPrice - Initial price for the simulation
-   *   volatility - Annual volatility parameter for GBM (typically 1-3)
-   *   drift - Annual drift parameter for GBM (typically 1-3)
+   * @param {Object} config - Configuration object
+   * @param {number} config.daysNeeded - Number of days of data to generate
+   * @param {number} config.startPrice - Initial price for the simulation
+   * @param {number} config.volatility - Annual volatility parameter (typically 0.1-3.0)
+   * @param {number} config.drift - Annual drift parameter (-1.0 to 1.0)
+   *
+   * @example
+   * const generator = new RandomOHLC({
+   *   daysNeeded: 30,
+   *   startPrice: 100,
+   *   volatility: 0.2,
+   *   drift: 0.05
+   * });
    */
   constructor(config: {
     daysNeeded: number;
@@ -72,15 +111,25 @@ export class RandomOHLC {
     this.volatility = config.volatility;
     this.drift = config.drift;
     this.timeIntervals = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
-
-    // console.info('Initializing RandomOHLC with config:', config);
   }
 
   /**
    * Generate OHLC price data and resample to multiple time intervals.
-   * Ensures all time intervals have consistent start and end times.
+   * This is the main method to generate price data for all supported intervals.
    *
-   * @returns TimeIntervalDict containing OHLC data for each time interval
+   * The process:
+   * 1. Generate minute-level data using GBM
+   * 2. Resample to all supported time intervals
+   * 3. Validate price relationships and continuity
+   *
+   * @returns {TimeIntervalDict} OHLC data for each time interval
+   * @throws {PriceValidationError} If price validation fails
+   * @throws {DataGenerationError} If data generation fails
+   *
+   * @example
+   * const data = generator.generateOhlcData();
+   * const minuteData = data['1m'];
+   * const hourlyData = data['1h'];
    */
   public generateOhlcData(): TimeIntervalDict {
     const minuteData = this.generateMinuteData();
@@ -90,15 +139,21 @@ export class RandomOHLC {
   }
 
   /**
-   * Generate minute-level OHLC data using GBM.
+   * Generate minute-level OHLC data using Geometric Brownian Motion.
    * This is the base data from which all other intervals are derived.
    *
-   * @returns Array of minute-level OHLC rows
+   * The process:
+   * 1. Generate random prices using GBM
+   * 2. Create corresponding dates
+   * 3. Combine into OHLC format
+   * 4. Adjust prices for continuity
+   *
+   * @returns {OhlcRow[]} Array of minute-level OHLC data
+   * @private
    */
   private generateMinuteData(): OhlcRow[] {
     const minutesInDay = 1440;
     const numMinutes = this.daysNeeded * minutesInDay;
-    // console.info(`Generating ${this.daysNeeded} days of data (${numMinutes} minutes).`);
 
     const randPrices = this.generateRandomPrices(numMinutes);
     const dates = this.generateDateRange(numMinutes);
@@ -110,48 +165,47 @@ export class RandomOHLC {
 
   /**
    * Generate a range of dates at minute intervals.
-   * Starts from a fixed date (2030-01-01) for consistency.
+   * Creates a sequence of dates starting from 2030-01-01 for consistency.
    *
-   * @param numMinutes Number of minutes to generate
-   * @returns Array of DateTime objects
+   * @param {number} numMinutes - Number of minutes to generate
+   * @returns {DateTime[]} Array of Luxon DateTime objects
+   * @private
    */
   private generateDateRange(numMinutes: number): DateTime[] {
-    // Start at the beginning of the day
     const startDate = DateTime.fromISO('2030-01-01T00:00:00').startOf('day');
     const dates: DateTime[] = [];
 
-    // Generate complete days of data
     for (let i = 0; i < numMinutes; i++) {
       const date = startDate.plus({ minutes: i });
-      // Only include if it's within a complete day
       if (date < startDate.plus({ days: this.daysNeeded })) {
         dates.push(date);
       }
     }
 
-    // console.info(`Date range: ${dates[0].toISO()} to ${dates[dates.length - 1].toISO()}`);
     return dates;
   }
 
   /**
    * Create minute-level OHLC data by combining dates and prices.
-   * Generates high and low values that respect OHLC relationships.
+   * Ensures realistic relationships between OHLC values:
+   * - High is the highest price in the interval
+   * - Low is the lowest price in the interval
+   * - Open and Close are the actual prices
    *
-   * @param dates Array of DateTime objects
-   * @param prices Array of price values
-   * @returns Array of OHLC rows
+   * @param {DateTime[]} dates - Array of dates
+   * @param {number[]} prices - Array of price values
+   * @returns {OhlcRow[]} Array of OHLC rows
+   * @private
    */
   private createMinuteOhlcData(dates: DateTime[], prices: number[]): OhlcRow[] {
     return dates.map((date, idx) => {
       const open = prices[idx];
-      const close = prices[idx]; // For minute data, open = close
+      const close = prices[idx];
       const maxPrice = Math.max(open, close);
       const minPrice = Math.min(open, close);
       const spread = maxPrice * 0.001; // 0.1% spread
 
-      // High is at least the max of open/close, plus up to the spread
       const high = maxPrice + Math.random() * spread;
-      // Low is at most the min of open/close, minus up to the spread
       const low = minPrice - Math.random() * spread;
 
       return {
@@ -167,30 +221,31 @@ export class RandomOHLC {
   /**
    * Calculate per-minute volatility and drift from annual values.
    * Converts annual parameters to per-minute values for GBM simulation.
+   * Uses the square root of time rule for volatility scaling.
    *
-   * @returns Object containing minute-level volatility and drift
+   * @returns {{ minuteVol: number, minuteDrift: number }} Minute-level parameters
+   * @private
    */
   private calculateMinuteParameters(): { minuteVol: number; minuteDrift: number } {
     const minutesInYear = 525600;
     const minuteVol = this.volatility / Math.sqrt(minutesInYear);
     const minuteDrift = this.drift / minutesInYear;
 
-    console.info('Generating GBM prices...');
-    // console.info(`  Start price: $${this.startPrice}`);
-    // console.info(
-    //   `  Per-minute volatility: ${minuteVol.toPrecision(6)} (annual: ${this.volatility})`
-    // );
-    // console.info(`  Per-minute drift: ${minuteDrift.toPrecision(6)} (annual: ${this.drift})`);
-
     return { minuteVol, minuteDrift };
   }
 
   /**
    * Generate simulated prices using Geometric Brownian Motion.
-   * Uses Box-Muller transform for normal distribution sampling.
+   * Implements the GBM formula: dS = μSdt + σSdW
+   * Where:
+   * - S is the price
+   * - μ is the drift
+   * - σ is the volatility
+   * - dW is a Wiener process increment
    *
-   * @param numBars Number of price points to generate
-   * @returns Array of simulated prices
+   * @param {number} numBars - Number of price points to generate
+   * @returns {number[]} Array of simulated prices
+   * @private
    */
   private generateRandomPrices(numBars: number): number[] {
     const { minuteVol, minuteDrift } = this.calculateMinuteParameters();
@@ -202,19 +257,20 @@ export class RandomOHLC {
       prices.push(price);
     }
 
-    // this.logPriceStats(prices);
     return prices;
   }
 
   /**
    * Calculate the next price using the GBM formula.
-   * Includes rounding to 2 decimal places for realism.
+   * Implements the discretized version of GBM:
+   * S(t+Δt) = S(t)exp((μ - σ²/2)Δt + σε√Δt)
    *
-   * @param prevPrice Previous price
-   * @param minuteVol Per-minute volatility
-   * @param minuteDrift Per-minute drift
-   * @param shock Random normal shock
-   * @returns Next price
+   * @param {number} prevPrice - Previous price
+   * @param {number} minuteVol - Per-minute volatility
+   * @param {number} minuteDrift - Per-minute drift
+   * @param {number} shock - Random normal shock
+   * @returns {number} Next price, rounded to 2 decimals
+   * @private
    */
   private calculateNextPrice(
     prevPrice: number,
@@ -228,25 +284,13 @@ export class RandomOHLC {
   }
 
   /**
-   * Log statistics about the generated prices.
-   * Includes final price and total return percentage.
-   *
-   * @param prices Array of generated prices
-   */
-  private logPriceStats(prices: number[]): void {
-    const finalPrice = prices[prices.length - 1];
-    const totalReturn = ((finalPrice - this.startPrice) / this.startPrice) * 100.0;
-
-    console.info(`  Final price: $${finalPrice.toFixed(2)}`);
-    console.info(`  Total return: ${totalReturn.toFixed(2)}%`);
-  }
-
-  /**
    * Generate normally distributed random numbers using Box-Muller transform.
+   * Converts uniform random numbers to normal distribution.
    *
-   * @param mean Mean of the normal distribution
-   * @param stdDev Standard deviation of the normal distribution
-   * @returns Random number from normal distribution
+   * @param {number} mean - Mean of the normal distribution
+   * @param {number} stdDev - Standard deviation of the normal distribution
+   * @returns {number} Random number from normal distribution
+   * @private
    */
   private randomNormal(mean: number, stdDev: number): number {
     const u1 = Math.random();
@@ -259,7 +303,8 @@ export class RandomOHLC {
    * Adjust open prices to ensure price continuity.
    * Makes each candle's open equal to the previous candle's close.
    *
-   * @param data Array of OHLC rows to adjust
+   * @param {OhlcRow[]} data - Array of OHLC rows to adjust
+   * @private
    */
   private adjustOpenPrices(data: OhlcRow[]): void {
     if (data.length === 0) return;
@@ -275,8 +320,9 @@ export class RandomOHLC {
    * Create OHLC data for multiple time intervals.
    * Maps minute data to each supported time interval.
    *
-   * @param minuteData Base minute-level OHLC data
-   * @returns TimeIntervalDict containing data for all intervals
+   * @param {OhlcRow[]} minuteData - Base minute-level OHLC data
+   * @returns {TimeIntervalDict} Data for all intervals
+   * @private
    */
   private createTimeIntervalData = (minuteData: OhlcRow[]): TimeIntervalDict => {
     return Object.fromEntries(
@@ -288,21 +334,23 @@ export class RandomOHLC {
   };
 
   /**
-   * Resample minute-level data to a larger time interval using data-forge.
-   * Handles all supported intervals from 1min to 1M.
-   * Ensures proper timestamp alignment for each interval.
+   * Resample minute-level data to a larger time interval.
+   * Aggregates OHLC data while preserving price relationships:
+   * - Open is the first price of the interval
+   * - High is the highest price in the interval
+   * - Low is the lowest price in the interval
+   * - Close is the last price of the interval
    *
-   * @param data Array of minute-level OHLC rows
-   * @param timeInterval Target time interval
-   * @returns Array of resampled OHLC rows
+   * @param {OhlcRow[]} data - Minute-level OHLC data
+   * @param {string} timeInterval - Target time interval
+   * @returns {OhlcRow[]} Resampled OHLC data
+   * @private
    */
   private resampleToTimeInterval(data: OhlcRow[], timeInterval: string): OhlcRow[] {
-    // If it's 1-minute data, return as is
     if (timeInterval === '1m') {
       return data;
     }
 
-    // Define the chunk size for each interval
     const minutesPerChunk =
       {
         '5m': 5,
@@ -314,13 +362,11 @@ export class RandomOHLC {
         M: 1440 * 30,
       }[timeInterval] || 1;
 
-    // Group data into chunks
     const chunks: OhlcRow[][] = [];
     for (let i = 0; i < data.length; i += minutesPerChunk) {
       chunks.push(data.slice(i, i + minutesPerChunk));
     }
 
-    // Convert chunks to OHLC bars
     return chunks.map((chunk) => ({
       timestamp: chunk[0].timestamp,
       open: chunk[0].open,
@@ -331,9 +377,13 @@ export class RandomOHLC {
   }
 
   /**
-   * Validate that all intervals have the same final open price
-   * @param result TimeIntervalDict to validate
-   * @returns void, throws error if validation fails
+   * Validate that all intervals have the same final open price.
+   * Ensures data consistency across different time intervals.
+   *
+   * @param {TimeIntervalDict} result - Data to validate
+   * @throws {PriceValidationError} If prices don't match across intervals
+   * @throws {DataGenerationError} If validation fails for other reasons
+   * @private
    */
   private validateOpenPrice(result: TimeIntervalDict): void {
     try {

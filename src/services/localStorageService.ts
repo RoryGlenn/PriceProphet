@@ -1,11 +1,28 @@
+/*********************************************************************
+ * localStorageService.ts
+ *
+ * Service for managing game data persistence in local storage.
+ * Handles saving and retrieving game results, user statistics,
+ * and leaderboard data.
+ *
+ * @module localStorageService
+ *********************************************************************/
+
 import { userInfoService } from './userInfoService';
 import { GameResult, UserStats, LeaderboardEntry } from '../types';
 
+/**
+ * Storage keys used for different data types in localStorage
+ * @const {Object} STORAGE_KEYS
+ */
 const STORAGE_KEYS = {
   GAMES: 'priceProphet_games',
 };
 
-// Get current user's ID
+/**
+ * Gets the current user's ID, initializing a new user if none exists
+ * @returns {string} The current user's ID
+ */
 const getCurrentUserId = (): string => {
   const profile = userInfoService.getCurrentUser();
   if (!profile) {
@@ -14,20 +31,27 @@ const getCurrentUserId = (): string => {
   return profile.userId;
 };
 
-// Get all stored games
+/**
+ * Retrieves all stored games from localStorage
+ * @returns {GameResult[]} Array of all stored game results
+ */
 const getAllGames = (): GameResult[] => {
   const gamesJson = localStorage.getItem(STORAGE_KEYS.GAMES);
   return gamesJson ? JSON.parse(gamesJson) : [];
 };
 
+/**
+ * Service object containing methods for managing game data in localStorage
+ */
 export const localStorageService = {
-  // Save game result
+  /**
+   * Saves a new game result to localStorage
+   * @param {Omit<GameResult, 'userId' | 'username' | 'timestamp'>} gameData - Game result data without user info
+   * @returns {GameResult} Complete game result with user info and timestamp
+   */
   saveGame: (gameData: Omit<GameResult, 'userId' | 'username' | 'timestamp'>): GameResult => {
     const games = getAllGames();
     const profile = userInfoService.getCurrentUser() || userInfoService.initializeUser();
-
-    // console.log('Current profile:', profile);
-    // console.log('Existing games:', games);
 
     const newGame: GameResult = {
       ...gameData,
@@ -36,14 +60,15 @@ export const localStorageService = {
       timestamp: new Date(),
     };
 
-    // console.log('Saving new game:', newGame);
-
     games.push(newGame);
     localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(games));
     return newGame;
   },
 
-  // Get user's game history
+  /**
+   * Retrieves game history for the current user
+   * @returns {GameResult[]} Array of user's game results, sorted by timestamp
+   */
   getUserGames: (): GameResult[] => {
     const userId = getCurrentUserId();
     return getAllGames()
@@ -52,7 +77,15 @@ export const localStorageService = {
       .slice(0, 10);
   },
 
-  // Get user's statistics
+  /**
+   * Calculates and returns statistics for the current user's game performance
+   * @returns {UserStats} Object containing user's game statistics:
+   * - totalGames: Total number of games played
+   * - averageScore: Average score across all games
+   * - highestScore: Highest score achieved
+   * - successRate: Percentage of games successfully completed
+   * - averageTime: Average time per game in seconds
+   */
   getUserStats: (): UserStats => {
     const userId = getCurrentUserId();
     const userGames = getAllGames().filter((game) => game.userId === userId);
@@ -79,7 +112,16 @@ export const localStorageService = {
     };
   },
 
-  // Get global leaderboard
+  /**
+   * Retrieves the global leaderboard showing top performers
+   * @returns {LeaderboardEntry[]} Array of top 10 players sorted by highest score,
+   * each entry containing:
+   * - userId: Player's unique identifier
+   * - username: Player's display name
+   * - highestScore: Player's highest achieved score
+   * - totalGames: Total number of games played
+   * - averageScore: Average score across all games
+   */
   getLeaderboard: (): LeaderboardEntry[] => {
     const games = getAllGames();
     const userStats = new Map<
@@ -98,7 +140,7 @@ export const localStorageService = {
         totalScore: 0,
         totalGames: 0,
         highestScore: 0,
-        username: game.username, // Store username from game data
+        username: game.username,
       };
       stats.totalScore += game.score;
       stats.totalGames += 1;
@@ -119,7 +161,14 @@ export const localStorageService = {
       .slice(0, 10);
   },
 
-  // Print all stored data for debugging
+  /**
+   * Prints all stored data to the console for debugging purposes
+   * Displays:
+   * - Current user profile
+   * - User statistics
+   * - Global leaderboard
+   * - Detailed game history
+   */
   debugPrintStorage: (): void => {
     const profile = userInfoService.getCurrentUser();
     const games = getAllGames();
