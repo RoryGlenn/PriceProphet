@@ -59,7 +59,7 @@
  * @module ChartPredictionView
  * @requires react
  * @requires @mui/material
- * @requires ./ChartComponent
+ * @requires ./CandlestickChart
  * @requires ../randomOHLC
  * @requires ../types
  * @requires lightweight-charts
@@ -81,7 +81,7 @@ import {
   Alert,
   Snackbar,
 } from '@mui/material';
-import { ChartComponent } from './ChartComponent';
+import { CandlestickChart } from './CandlestickChart';
 import { RandomOHLC, TimeIntervalDict } from '../randomOHLC';
 import { OhlcBar, OhlcRow, DifficultyLevel, TimeInterval, MINUTES_PER_INTERVAL } from '../types';
 import { Time } from 'lightweight-charts';
@@ -773,7 +773,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
           }}
         >
           {!loading && Object.keys(historicalData).length > 0 && (
-            <ChartComponent data={historicalData} defaultInterval="D" />
+            <CandlestickChart data={historicalData} defaultInterval="D" />
           )}
         </Box>
 

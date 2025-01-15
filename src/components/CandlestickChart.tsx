@@ -1,5 +1,5 @@
 /*********************************************************************
- * ChartComponent.tsx
+ * CandlestickChart.tsx
  *
  * Interactive candlestick chart component using TradingView's lightweight-charts.
  * Supports multiple timeframes, smooth data transitions, and responsive design.
@@ -25,7 +25,7 @@
  * - Previous data cached for diffing
  * - Initialization state tracking
  *
- * @module ChartComponent
+ * @module CandlestickChart
  * @requires lightweight-charts
  * @requires @mui/material
  * @requires luxon
@@ -39,10 +39,10 @@ import { DateTime } from 'luxon';
 import { SxProps } from '@mui/system';
 
 /**
- * Props for the ChartComponent.
+ * Props for the CandlestickChart component.
  * Defines the data structure and configuration options for the chart.
  *
- * @interface ChartComponentProps
+ * @interface CandlestickChartProps
  * @property {Object} data - OHLC data organized by timeframe intervals
  * @property {string} [defaultInterval='D'] - Initial timeframe to display
  *
@@ -51,9 +51,9 @@ import { SxProps } from '@mui/system';
  *   '1m': [{ time: 1234567890, open: 100, high: 101, low: 99, close: 100.5 }],
  *   'D': [{ time: '2023-01-01', open: 100, high: 105, low: 95, close: 102 }]
  * };
- * <ChartComponent data={data} defaultInterval="D" />
+ * <CandlestickChart data={data} defaultInterval="D" />
  */
-interface ChartComponentProps {
+interface CandlestickChartProps {
   /** OHLC data organized by timeframe */
   data: {
     [key: string]: OhlcBar[];
@@ -140,7 +140,7 @@ const chartContainerStyles: SxProps<Theme> = {
  * - Debounces resize events
  *
  * @component
- * @param {ChartComponentProps} props - Component props
+ * @param {CandlestickChartProps} props - Component props
  * @returns {JSX.Element} Rendered chart component
  *
  * @example
@@ -150,13 +150,16 @@ const chartContainerStyles: SxProps<Theme> = {
  * };
  *
  * return (
- *   <ChartComponent
+ *   <CandlestickChart
  *     data={data}
  *     defaultInterval="D"
  *   />
  * );
  */
-export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInterval = 'D' }) => {
+export const CandlestickChart: React.FC<CandlestickChartProps> = ({
+  data,
+  defaultInterval = 'D',
+}) => {
   // Chart instance and series refs for direct manipulation
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | undefined>();
