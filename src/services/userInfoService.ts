@@ -130,20 +130,20 @@ const generateUsername = (info: SystemInfo): string => {
  *
  * @returns {SystemInfo} Object containing system information
  */
-const collectSystemInfo = (): SystemInfo => {
-  const now = new Date().toISOString();
+// const collectSystemInfo = (): SystemInfo => {
+//   const now = new Date().toISOString();
 
-  return {
-    hostname: window.location.hostname,
-    platform: navigator.platform,
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screenResolution: `${window.screen.width}x${window.screen.height}`,
-    firstVisit: now,
-    lastVisit: now,
-  };
-};
+//   return {
+//     hostname: window.location.hostname,
+//     platform: navigator.platform,
+//     userAgent: navigator.userAgent,
+//     language: navigator.language,
+//     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+//     screenResolution: `${window.screen.width}x${window.screen.height}`,
+//     firstVisit: now,
+//     lastVisit: now,
+//   };
+// };
 
 /**
  * Service object for managing user profiles and system information.
