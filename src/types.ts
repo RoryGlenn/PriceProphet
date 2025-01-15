@@ -198,3 +198,11 @@ export interface LeaderboardEntry {
   totalGames: number;
   averageScore: number;
 }
+
+declare global {
+  namespace jest {
+    interface Matchers<R> {
+      toBeInTheDocument(): R;
+    }
+  }
+}
