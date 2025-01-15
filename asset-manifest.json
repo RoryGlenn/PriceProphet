@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/PriceProphet/static/js/main.ac469970.js",
+    "main.js": "/PriceProphet/static/js/main.85ad746a.js",
     "index.html": "/PriceProphet/index.html",
-    "main.ac469970.js.map": "/PriceProphet/static/js/main.ac469970.js.map"
+    "main.85ad746a.js.map": "/PriceProphet/static/js/main.85ad746a.js.map"
   },
   "entrypoints": [
-    "static/js/main.ac469970.js"
+    "static/js/main.85ad746a.js"
   ]
 }
