@@ -12,6 +12,8 @@ A modern stock price prediction game built with React and TypeScript. Test your 
 [Getting Started](#getting-started) •
 [Features](#features) •
 [How It Works](#how-it-works) •
+[Development](#development) •
+[Testing](#testing) •
 [Contributing](#contributing)
 
 ---
@@ -20,53 +22,117 @@ A modern stock price prediction game built with React and TypeScript. Test your 
 
 ## 🎮 Overview
 
-This React-based application challenges users to predict future stock closing prices after reviewing the last 90 days of generated OHLC (Open-High-Low-Close) data. By simulating realistic price movements and volatility via Geometric Brownian Motion (GBM), the app provides a fun and educational environment to test your market intuition.
+Price Prophet is an interactive financial game that challenges users to predict future stock prices using simulated market data. The application generates realistic price movements using Geometric Brownian Motion (GBM) and provides a professional-grade trading interface for analysis and prediction.
+
+### Core Features
+
+- Real-time price simulation using GBM
+- Multiple timeframe analysis (1m to Monthly)
+- Three difficulty levels with increasing prediction horizons
+- Interactive candlestick charts with technical analysis tools
+- Performance tracking and statistics
+- Global leaderboard system
+- Cross-device progress persistence
 
 ## ✨ Features
 
-### 📊 Realistic Data Generation
+### 📊 Advanced Data Generation
 
-Utilizes a custom `RandomOHLC` class to generate minute-level price data and then aggregates it into daily OHLC bars for display.
+- **Geometric Brownian Motion (GBM)** implementation for realistic price movements
+- Minute-level data generation with configurable parameters:
+  - Volatility (0.1 to 3.0)
+  - Drift (-1.0 to 1.0)
+  - Time horizon (1-365 days)
+- Automatic aggregation to multiple timeframes
+- Realistic OHLC (Open-High-Low-Close) relationships
 
-### 📈 Interactive Candlestick Chart
+### 📈 Professional Trading Interface
 
-- Professional-grade charting using TradingView's lightweight charts library
-- Multiple timeframe analysis (1m, 5m, 15m, 1h, 4h, D, W, M)
-- Optimized performance with smooth transitions between timeframes
-- Clean, readable date formats with detailed tooltips
-- Currency-formatted price axis for better readability
-- Responsive design that adapts to screen size
+- **TradingView Integration**
+  - Lightweight Charts library for optimal performance
+  - Multiple timeframe support (1m, 5m, 15m, 1h, 4h, D, W, M)
+  - Smooth data transitions and animations
+  - Responsive design with touch support
 
-### 🎯 Difficulty Levels
+- **Chart Features**
+  - Candlestick visualization
+  - Price axis formatting
+  - Time axis with dynamic formatting
+  - Interactive crosshair
+  - Custom tooltips
+  - Zoom and pan controls
 
-- **Easy:** Predict the closing price 1 day in the future
-- **Medium:** Predict the closing price 7 days in the future
-- **Hard:** Predict the closing price 30 days in the future
+### 🎯 Game Mechanics
 
-### 🎲 Game States
+- **Difficulty Levels**
+  - Easy: 1-day prediction (24 hours)
+  - Medium: 7-day prediction (1 week)
+  - Hard: 30-day prediction (1 month)
 
-- **START:** Prompting the user to select difficulty and begin
-- **INITIAL:** Displaying past 90 days of data, waiting for the user's first guess
-- **SHOW_RESULT:** After a guess, showing correctness and allowing progression
-- **FINISHED:** Displaying final results after 5 attempts
+- **Scoring System**
+  - Points based on prediction accuracy
+  - Streak bonuses for consecutive correct predictions
+  - Difficulty multipliers
+  - Global ranking system
 
-### 📊 Dynamic Scoring and Feedback
+### 🔄 Game Flow
 
-Shows correct/wrong counts, calculates accuracy, uses a progress bar, provides encouraging messages, and compares performance to a hypothetical average. Also plots guess correctness over attempts.
+1. **Start Phase**
+   - Difficulty selection
+   - Initial data loading
+   - Game state initialization
 
-## 🔍 How It Works
+2. **Prediction Phase**
+   - Historical data analysis
+   - Multiple timeframe review
+   - Price selection from options
 
-### 1️⃣ Data Simulation
+3. **Feedback Phase**
+   - Immediate result display
+   - Score update
+   - Progress tracking
 
-The application uses minute-level simulations (via GBM) to produce realistic intraday volatility. This minute data is then resampled into daily OHLC bars to provide more authentic daily patterns.
+4. **Results Phase**
+   - Final score calculation
+   - Performance statistics
+   - Historical comparison
+   - Global ranking update
 
-### 2️⃣ User Prediction
+## 🔍 Technical Implementation
 
-Based on difficulty, the user selects a future closing price from several options. The chosen difficulty determines how far into the future the guess projects.
+### Data Generation
 
-### 3️⃣ Scoring & Final Results
+The `RandomOHLC` class implements GBM for price simulation:
+```typescript
+interface RandomOhlcConfig {
+  daysNeeded: number;    // Simulation duration
+  startPrice: number;    // Initial price
+  volatility: number;    // Price volatility (0.1-3.0)
+  drift: number;         // Price trend (-1.0 to 1.0)
+}
+```
 
-Each guess updates the user's score. After 5 attempts, the results page shows accuracy, average error, and a chart comparing guesses to actual prices.
+### State Management
+
+- **Game State**
+  - React Context for global state
+  - Local state for component-specific data
+  - LocalStorage for persistence
+
+- **User Data**
+  - Profile management
+  - Score history
+  - Performance statistics
+  - Device fingerprinting
+
+### Performance Optimizations
+
+- Memoized calculations with useMemo
+- Callback optimization with useCallback
+- Virtual scrolling for large datasets
+- Debounced event handlers
+- Efficient data structures
+- Lazy loading of components
 
 ## 🚀 Getting Started
 
@@ -74,6 +140,7 @@ Each guess updates the user's score. After 5 attempts, the results page shows ac
 
 - **Node.js 16+**
 - **npm** or **yarn** for package management
+- **Git** for version control
 
 ### Installation
 
@@ -83,76 +150,161 @@ cd PriceProphet
 npm install  # or yarn install
 ```
 
-### Running the App
+### Development Setup
 
 ```bash
-npm start  # or yarn start
+# Start development server
+npm start
+
+# Run tests in watch mode
+npm test
+
+# Build for production
+npm run build
 ```
 
-Then open `http://localhost:3000` in your browser.
+## 💻 Development
 
-### Building for Production
+### Code Quality Tools
+
+- **TypeScript**: Static type checking
+- **ESLint**: Code linting with custom rules
+- **Prettier**: Code formatting
+- **Husky**: Pre-commit hooks
+- **lint-staged**: Staged files linting
+
+### Available Scripts
 
 ```bash
-npm run build  # or yarn build
+npm start          # Start development server
+npm test          # Run tests in watch mode
+npm run build     # Build for production
+npm run lint      # Run ESLint
+npm run lint:fix  # Fix ESLint issues
+npm run format    # Format code with Prettier
+npm run validate  # Run all checks
 ```
 
-## 🎮 Gameplay Instructions
+### Development Workflow
 
-### 1️⃣ Start Page
+1. Create feature branch
+2. Implement changes
+3. Run validation checks
+4. Submit pull request
+5. Address review feedback
 
-Choose a difficulty (Easy, Medium, Hard) and press **Start Game**.
+## 🧪 Testing
 
-### 2️⃣ Make a Guess
+### Test Coverage Requirements
 
-- Review the candlestick chart of the past 90 days
-- Use the timeframe buttons to analyze different time periods
-- Hover over candlesticks to see detailed price information
-- Select a predicted future closing price and submit
+- **Unit Tests**: 80% coverage
+- **Integration Tests**: Key user flows
+- **Component Tests**: UI interactions
+- **Service Tests**: Data management
 
-### 3️⃣ View Feedback
+### Running Tests
 
-After submitting, see if you were correct. Continue until all attempts are completed.
-
-### 4️⃣ Final Results
-
-Review your performance metrics (accuracy, average error) and a chart showing your guesses vs. actual prices. Use this feedback to improve in future rounds.
+```bash
+npm test              # Watch mode
+npm run test:coverage # Coverage report
+npm run test:ci      # CI mode
+```
 
 ## 📁 Project Structure
 
 ```
 src/
-  ├── components/     # React components
-  │   ├── ChartComponent.tsx    # Interactive candlestick chart
-  │   ├── GameScreen.tsx        # Main game interface
-  │   └── ...                   # Other components
-  ├── types/         # TypeScript interfaces and types
-  ├── utils/         # Helper functions and RandomOHLC class
-  ├── hooks/         # Custom React hooks
-  ├── App.tsx        # Main application component
-  └── index.tsx      # Application entry point
+  ├── components/           # React components
+  │   ├── ChartComponent.tsx       # Interactive candlestick chart
+  │   ├── ChartPredictionView.tsx  # Main game prediction interface
+  │   ├── WelcomePage.tsx         # Landing/difficulty selection
+  │   ├── ResultsPage.tsx         # Game results and statistics
+  │   └── ErrorBoundary.tsx       # Error handling component
+  │
+  ├── services/            # Application services
+  │   ├── localStorageService.ts  # Game data persistence
+  │   └── userInfoService.ts      # User profile management
+  │
+  ├── styles/             # Styling and theming
+  │   └── theme.ts              # Material-UI theme configuration
+  │
+  ├── utils/              # Utility functions
+  │   └── priceUtils.ts         # Price formatting and calculations
+  │
+  ├── __mocks__/          # Test mock implementations
+  │   └── lightweight-charts.ts # Chart library mocks
+  │
+  ├── __tests__/          # Test files
+  │   ├── components/           # Component tests
+  │   ├── services/            # Service tests
+  │   └── utils/               # Utility tests
+  │
+  ├── types.ts            # TypeScript type definitions
+  ├── App.tsx             # Main application component
+  ├── index.tsx           # Application entry point
+  ├── setupTests.ts       # Test configuration
+  └── index.css           # Global styles
 ```
 
-## ⚙️ Customization
+## 📦 Dependencies
 
-### 📅 Adjust Days
+### Core Dependencies
 
-Modify `NUM_BARS` constant to simulate more or fewer days.
+- **React 18+**: UI framework
+- **TypeScript 4+**: Type safety
+- **Material-UI 5+**: Component library
+- **Lightweight Charts**: Chart rendering
+- **Luxon**: Date handling
+- **UUID**: Unique ID generation
 
-### 📊 Volatility and Drift
+### Development Dependencies
 
-Adjust the random ranges for volatility and drift in `RandomOHLC` class to produce different price dynamics.
+- **Jest**: Testing framework
+- **React Testing Library**: Component testing
+- **ESLint**: Code linting
+- **Prettier**: Code formatting
+- **Husky**: Git hooks
+- **TypeDoc**: Documentation generation
 
-### 🎨 Chart Appearance
+## 🚀 Deployment
 
-- Modify colors in `ChartComponent` for different candlestick styles
-- Adjust bar spacing and time formats for different viewing preferences
-- Customize tooltip formats for different information display
+### Build Process
+
+1. Run validation: `npm run validate`
+2. Build app: `npm run build`
+3. Deploy to hosting platform
+
+### Hosting Options
+
+- GitHub Pages (current)
+- Vercel
+- Netlify
+- AWS S3/CloudFront
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request with improvements or new features.
+### Getting Started
+
+1. Fork repository
+2. Create feature branch
+3. Implement changes
+4. Run tests and checks
+5. Submit pull request
+
+### Guidelines
+
+- Follow TypeScript best practices
+- Write comprehensive tests
+- Update documentation
+- Follow commit conventions
 
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- TradingView for Lightweight Charts
+- Material-UI team
+- React community
+- All contributors

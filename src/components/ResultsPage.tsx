@@ -1,8 +1,29 @@
 /*********************************************************************
  * ResultsPage.tsx
  *
- * Game results display component that shows the player's performance.
- * Features score summary, accuracy metrics, and performance visualization.
+ * Game results display component that shows the player's performance,
+ * statistics, and leaderboard rankings. Provides options for continuing
+ * gameplay or returning to the main menu.
+ *
+ * Features:
+ * - Score breakdown and accuracy metrics
+ * - Historical performance statistics
+ * - Global leaderboard display
+ * - Glass morphism UI design
+ * - Responsive layout
+ * - Interactive navigation options
+ *
+ * UI Sections:
+ * 1. Game Results Summary
+ * 2. Player Statistics
+ * 3. Global Leaderboard
+ * 4. Navigation Controls
+ *
+ * @module ResultsPage
+ * @requires react
+ * @requires @mui/material
+ * @requires ../types
+ * @requires ../services/localStorageService
  *********************************************************************/
 
 import React from 'react';
@@ -10,6 +31,18 @@ import { Container, Paper, Typography, Button, Box, Divider } from '@mui/materia
 import { DifficultyLevel } from '../types';
 import { localStorageService } from '../services/localStorageService';
 
+/**
+ * Props interface for the ResultsPage component.
+ * Defines the configuration and callback properties.
+ *
+ * @interface ResultsPageProps
+ * @property {Object} score - Player's game performance metrics
+ * @property {number} score.right - Number of correct predictions
+ * @property {number} score.wrong - Number of incorrect predictions
+ * @property {DifficultyLevel} difficulty - Selected game difficulty level
+ * @property {() => void} onPlayAgain - Callback to start a new game
+ * @property {() => void} onBackToMenu - Callback to return to main menu
+ */
 interface ResultsPageProps {
   score: {
     right: number;
@@ -21,10 +54,41 @@ interface ResultsPageProps {
 }
 
 /**
- * Displays the final game results and provides option to return to welcome screen.
- * Shows score breakdown and calculates accuracy percentage.
+ * Results page component that displays game performance, statistics,
+ * and provides navigation options. Features a modern glass morphism
+ * design with responsive layout.
  *
- * @param props Component props
+ * Component Sections:
+ * 1. Score Summary
+ *    - Displays correct/incorrect predictions
+ *    - Shows accuracy percentage
+ *
+ * 2. Player Statistics
+ *    - Total games played
+ *    - Average score
+ *    - Highest score
+ *    - Success rate
+ *
+ * 3. Leaderboard
+ *    - Top 5 players
+ *    - Highest scores
+ *    - Player rankings
+ *
+ * 4. Navigation
+ *    - Play Again button
+ *    - Back to Menu button
+ *
+ * @component
+ * @param {ResultsPageProps} props - Component props
+ * @returns {JSX.Element} Rendered results page
+ *
+ * @example
+ * <ResultsPage
+ *   score={{ right: 3, wrong: 2 }}
+ *   difficulty="Medium"
+ *   onPlayAgain={() => startNewGame()}
+ *   onBackToMenu={() => navigateToMenu()}
+ * />
  */
 export const ResultsPage: React.FC<ResultsPageProps> = ({
   score,
@@ -32,11 +96,19 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
   onPlayAgain,
   onBackToMenu,
 }) => {
+  /**
+   * Calculates the player's prediction accuracy percentage.
+   * Handles edge case when no predictions were made.
+   *
+   * @function calculateAccuracy
+   * @returns {number} Accuracy percentage (0-100)
+   */
   const calculateAccuracy = () => {
     const total = score.right + score.wrong;
     return total === 0 ? 0 : Math.round((score.right / total) * 100);
   };
 
+  // Fetch player statistics and leaderboard data
   const stats = localStorageService.getUserStats();
   const leaderboard = localStorageService.getLeaderboard();
 
@@ -78,6 +150,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           },
         }}
       >
+        {/* Game Results Section */}
         <Box sx={{ position: 'relative', zIndex: 1 }}>
           <Typography
             variant="h4"
@@ -92,6 +165,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
             Game Results
           </Typography>
 
+          {/* Score Summary */}
           <Box
             sx={{
               display: 'flex',
@@ -113,6 +187,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
 
           <Divider sx={{ my: 3, bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
 
+          {/* Player Statistics Section */}
           <Typography
             variant="h5"
             sx={{
@@ -132,6 +207,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               mb: 3,
             }}
           >
+            {/* Total Games Stat */}
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body1" color="rgba(255, 255, 255, 0.7)">
                 Total Games
@@ -140,6 +216,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
                 {stats.totalGames}
               </Typography>
             </Box>
+            {/* Average Score Stat */}
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body1" color="rgba(255, 255, 255, 0.7)">
                 Average Score
@@ -148,6 +225,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
                 {Math.round(stats.averageScore)}
               </Typography>
             </Box>
+            {/* Highest Score Stat */}
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body1" color="rgba(255, 255, 255, 0.7)">
                 Highest Score
@@ -156,6 +234,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
                 {stats.highestScore}
               </Typography>
             </Box>
+            {/* Success Rate Stat */}
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body1" color="rgba(255, 255, 255, 0.7)">
                 Success Rate
@@ -166,6 +245,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
             </Box>
           </Box>
 
+          {/* Leaderboard Section */}
           {leaderboard.length > 0 && (
             <>
               <Divider sx={{ my: 3, bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
@@ -203,6 +283,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
             </>
           )}
 
+          {/* Navigation Buttons */}
           <Box
             sx={{
               display: 'flex',
@@ -211,6 +292,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               marginTop: '2rem',
             }}
           >
+            {/* Play Again Button */}
             <Button
               variant="contained"
               onClick={onPlayAgain}
@@ -232,6 +314,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               Play Again
             </Button>
 
+            {/* Back to Menu Button */}
             <Button
               variant="outlined"
               onClick={onBackToMenu}

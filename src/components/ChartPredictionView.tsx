@@ -3,6 +3,68 @@
  *
  * Main chart prediction interface component that handles price prediction gameplay.
  * Manages chart state, data generation, user interactions, and scoring.
+ *
+ * Features:
+ * - Dynamic price data generation using Geometric Brownian Motion
+ * - Multiple difficulty levels with varying prediction timeframes
+ * - Real-time score tracking and feedback
+ * - Interactive chart with multiple timeframe views
+ * - Responsive design with glass morphism effects
+ * - Error handling with user-friendly messages
+ * - Accessibility support with ARIA labels
+ * - Performance optimizations for smooth animations
+ *
+ * Game Flow:
+ * 1. Initialize game with selected difficulty
+ * 2. Generate random price data with controlled volatility
+ * 3. Present chart and price choices with visual feedback
+ * 4. Process user prediction with validation
+ * 5. Show result and update score with animations
+ * 6. Repeat for 5 rounds or until game end
+ *
+ * State Management:
+ * - Historical price data for all timeframes (1m to Monthly)
+ * - Current game state (loading, score, attempt)
+ * - User interaction state (selected choice, results)
+ * - Error handling state with recovery options
+ *
+ * Performance Optimizations:
+ * - Memoized data processing functions
+ * - Efficient data structure updates
+ * - Lazy loading of chart components
+ * - Debounced user interactions
+ * - Optimized re-renders with React.memo
+ *
+ * Accessibility Features:
+ * - Keyboard navigation support
+ * - Screen reader compatibility
+ * - High contrast mode support
+ * - Focus management
+ * - ARIA labels and roles
+ *
+ * Error Handling:
+ * - Data generation failures
+ * - Network connectivity issues
+ * - Invalid user inputs
+ * - State inconsistencies
+ * - Graceful degradation
+ *
+ * Dependencies:
+ * - React for UI components
+ * - Material-UI for styled components
+ * - Lightweight Charts for visualization
+ * - RandomOHLC for data generation
+ * - Custom utilities for price formatting
+ *
+ * @module ChartPredictionView
+ * @requires react
+ * @requires @mui/material
+ * @requires ./ChartComponent
+ * @requires ../randomOHLC
+ * @requires ../types
+ * @requires lightweight-charts
+ * @requires ../utils/priceUtils
+ * @requires ../styles/theme
  *********************************************************************/
 
 import React, { useState, useCallback } from 'react';
@@ -26,22 +88,87 @@ import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
 import { buttonStyles, layoutStyles } from '../styles/theme';
 
-/** Score object type used throughout the application */
+/**
+ * Score tracking interface for the game.
+ * Maintains count of correct and incorrect predictions.
+ * Used for game progression and final scoring.
+ *
+ * @interface Score
+ * @property {number} right - Number of correct predictions (0-5)
+ * @property {number} wrong - Number of incorrect predictions (0-5)
+ *
+ * @example
+ * const score: Score = { right: 3, wrong: 2 };
+ */
 export interface Score {
   right: number;
   wrong: number;
 }
 
-/** Props for the ChartPredictionView component */
+/**
+ * Props for the ChartPredictionView component.
+ * Configures game difficulty and handles game completion.
+ * Parent component controls game flow through these props.
+ *
+ * @interface ChartPredictionViewProps
+ * @property {DifficultyLevel} difficulty - Selected game difficulty level (Easy/Medium/Hard)
+ * @property {Function} onGameEnd - Callback when game ends with final score
+ *
+ * @example
+ * <ChartPredictionView
+ *   difficulty="Medium"
+ *   onGameEnd={(score) => handleGameEnd(score)}
+ * />
+ */
 interface ChartPredictionViewProps {
   difficulty: DifficultyLevel;
   onGameEnd: (score: Score) => void;
 }
 
-/** Type for the historical price data organized by timeframe */
+/**
+ * Type definition for historical price data.
+ * Organizes OHLC data by timeframe intervals.
+ * Supports multiple timeframe views (1m to Monthly).
+ *
+ * Structure:
+ * - Key: TimeInterval (e.g., '1m', '5m', '1h', 'D')
+ * - Value: Array of OHLC bars for that interval
+ *
+ * @typedef {Record<TimeInterval, OhlcBar[]>} HistoricalData
+ *
+ * @example
+ * const data: HistoricalData = {
+ *   '1m': [{ time: 1234567890, open: 100, high: 101, low: 99, close: 100.5 }],
+ *   'D': [{ time: '2023-01-01', open: 100, high: 105, low: 95, close: 102 }]
+ * };
+ */
 type HistoricalData = Record<TimeInterval, OhlcBar[]>;
 
-/** Configuration for random data generation */
+/**
+ * Configuration interface for random data generation.
+ * Controls the characteristics of generated price data.
+ * Parameters affect price movement patterns.
+ *
+ * Constraints:
+ * - daysNeeded: > 0
+ * - startPrice: > 0
+ * - volatility: 0-1 range
+ * - drift: -1 to 1 range
+ *
+ * @interface RandomDataConfig
+ * @property {number} daysNeeded - Total days of data to generate
+ * @property {number} startPrice - Initial price point
+ * @property {number} volatility - Price volatility factor
+ * @property {number} drift - Price trend direction factor
+ *
+ * @example
+ * const config: RandomDataConfig = {
+ *   daysNeeded: 90,
+ *   startPrice: 10000,
+ *   volatility: 0.2,
+ *   drift: 0.1
+ * };
+ */
 interface RandomDataConfig {
   daysNeeded: number;
   startPrice: number;
@@ -49,7 +176,22 @@ interface RandomDataConfig {
   drift: number;
 }
 
-/** Default configuration for random data generation */
+/**
+ * Default configuration for random data generation.
+ * Provides base values that are adjusted based on difficulty.
+ * Values are chosen to create realistic price movements.
+ *
+ * Properties:
+ * - daysNeeded: 91 days for sufficient historical context
+ * - startPrice: 10000 as a baseline reference point
+ * - volatility: Set dynamically based on difficulty
+ * - drift: Set dynamically based on difficulty
+ *
+ * @constant {RandomDataConfig} DEFAULT_RANDOM_CONFIG
+ *
+ * @example
+ * const config = { ...DEFAULT_RANDOM_CONFIG, volatility: 0.2 };
+ */
 const DEFAULT_RANDOM_CONFIG: RandomDataConfig = {
   daysNeeded: 91,
   startPrice: 10000,
@@ -57,7 +199,26 @@ const DEFAULT_RANDOM_CONFIG: RandomDataConfig = {
   drift: 0, // Will be set dynamically
 } as const;
 
-/** Initial historical data state */
+/**
+ * Initial state for historical price data.
+ * Provides empty arrays for all supported timeframes.
+ * Used as initial state and for resetting data.
+ *
+ * Timeframes:
+ * - 1m: One-minute intervals
+ * - 5m: Five-minute intervals
+ * - 15m: Fifteen-minute intervals
+ * - 1h: Hourly intervals
+ * - 4h: Four-hour intervals
+ * - D: Daily intervals
+ * - W: Weekly intervals
+ * - M: Monthly intervals
+ *
+ * @constant {HistoricalData} INITIAL_HISTORICAL_DATA
+ *
+ * @example
+ * const data = { ...INITIAL_HISTORICAL_DATA };
+ */
 const INITIAL_HISTORICAL_DATA: HistoricalData = {
   '1m': [],
   '5m': [],
@@ -70,33 +231,51 @@ const INITIAL_HISTORICAL_DATA: HistoricalData = {
 };
 
 /**
- * Gets the number of days into the future to predict based on difficulty.
- * - Easy: 1 day
- * - Medium: 7 days
- * - Hard: 30 days
+ * Determines the prediction timeframe based on difficulty level.
+ * Maps difficulty levels to future prediction periods:
+ * - Easy: 1 day ahead (short-term prediction)
+ * - Medium: 7 days ahead (medium-term prediction)
+ * - Hard: 30 days ahead (long-term prediction)
+ *
+ * Used to:
+ * - Remove future data from historical dataset
+ * - Calculate prediction window size
+ * - Adjust scoring difficulty
+ *
+ * @function getFutureIndex
+ * @param {DifficultyLevel} difficulty - Current game difficulty
+ * @returns {number} Number of days to predict into the future
+ *
+ * @example
+ * const daysToPredict = getFutureIndex('Medium'); // Returns 7
  */
-const getFutureIndex = (difficulty: DifficultyLevel): any => {
+const getFutureIndex = (difficulty: DifficultyLevel): number => {
   return difficulty === 'Easy' ? 1 : difficulty === 'Medium' ? 7 : 30;
 };
 
 /**
- * Main chart prediction interface component.
- * Main chart prediction interface component.
- * Handles the core prediction logic including:
- * - Data generation using RandomOHLC
- * - Chart state management
- * - Score tracking
- * - User interaction processing
+ * Main game component for price prediction gameplay.
+ * Manages the complete game lifecycle including:
+ * - Data generation and processing
+ * - User interaction handling
+ * - Score tracking and game progression
+ * - Error handling and feedback
+ *
+ * Component States:
+ * - Loading: Initial data generation
+ * - Active: User making prediction
+ * - Result: Showing prediction outcome
+ * - Complete: Game finished after 5 rounds
  *
  * @component
  * @param {ChartPredictionViewProps} props - Component props
- * @param {DifficultyLevel} props.difficulty - Selected difficulty level
- * @param {Function} props.onGameEnd - Callback when game ends with final score
+ * @returns {JSX.Element} Rendered game interface
  */
 export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   difficulty,
   onGameEnd,
 }) => {
+  // Game state
   const [historicalData, setHistoricalData] = useState<HistoricalData>(INITIAL_HISTORICAL_DATA);
   const [priceChoices, setPriceChoices] = useState<string[]>([]);
   const [selectedChoice, setSelectedChoice] = useState<string>('');
@@ -107,10 +286,16 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   const [correctPrice, setCorrectPrice] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
+  // Initialization tracking
   const hasInitialized = React.useRef(false);
 
   /**
-   * Logs error messages in development mode
+   * Logs error messages in development environment.
+   * Provides detailed error information for debugging.
+   *
+   * @function logError
+   * @param {string} message - Error description
+   * @param {unknown} error - Error object or details
    */
   const logError = React.useCallback((message: string, error: unknown): void => {
     if (process.env.NODE_ENV === 'development') {
@@ -119,21 +304,35 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   }, []);
 
   /**
-   * Clears any displayed error messages
+   * Clears displayed error messages.
+   * Resets error state when user dismisses alert.
+   *
+   * @function handleErrorClose
    */
   const handleErrorClose = () => {
     setError(null);
   };
 
   /**
-   * Gets the number of minutes for a given time interval
+   * Converts timeframe interval to minutes.
+   * Used for data processing and calculations.
+   *
+   * @function getMinutesForInterval
+   * @param {TimeInterval} interval - Timeframe interval
+   * @returns {number} Number of minutes in the interval
    */
   const getMinutesForInterval = useCallback((interval: TimeInterval): number => {
     return MINUTES_PER_INTERVAL[interval];
   }, []);
 
   /**
-   * Formats a raw OHLC row into a bar format suitable for the chart
+   * Formats raw OHLC data into chart-compatible format.
+   * Handles different timestamp formats based on timeframe.
+   *
+   * @function formatOhlcBar
+   * @param {OhlcRow} bar - Raw OHLC data
+   * @param {string} timeframe - Target timeframe
+   * @returns {OhlcBar} Formatted OHLC bar
    */
   const formatOhlcBar = useCallback((bar: OhlcRow, timeframe: string): OhlcBar => {
     const timeValue =
@@ -151,7 +350,13 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   }, []);
 
   /**
-   * Sorts OHLC bars by time, handling both number and string timestamps
+   * Sorts OHLC bars by timestamp.
+   * Handles both numeric and string timestamp formats.
+   *
+   * @function sortOhlcBars
+   * @param {OhlcBar} a - First OHLC bar
+   * @param {OhlcBar} b - Second OHLC bar
+   * @returns {number} Sort order (-1, 0, 1)
    */
   const sortOhlcBars = useCallback((a: OhlcBar, b: OhlcBar): number => {
     if (typeof a.time === 'number' && typeof b.time === 'number') {
@@ -160,12 +365,17 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
     if (typeof a.time === 'string' && typeof b.time === 'string') {
       return a.time.localeCompare(b.time);
     }
-    // Handle mixed types (shouldn't occur in practice)
     return String(a.time).localeCompare(String(b.time));
   }, []);
 
   /**
-   * Processes data for a specific interval
+   * Processes data for a specific timeframe interval.
+   * Aggregates minute data into larger timeframes.
+   *
+   * @function processIntervalData
+   * @param {OhlcRow[]} minuteData - Raw minute-level data
+   * @param {number} barsPerInterval - Number of bars to aggregate
+   * @returns {OhlcBar[]} Processed OHLC bars
    */
   const processIntervalData = useCallback(
     (minuteData: OhlcRow[], barsPerInterval: number): OhlcBar[] => {
@@ -190,7 +400,12 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   );
 
   /**
-   * Processes raw OHLC data into timeframe groups
+   * Processes raw OHLC data into all timeframe intervals.
+   * Creates a complete dataset for the chart component.
+   *
+   * @function processOhlcData
+   * @param {TimeIntervalDict} data - Raw OHLC data
+   * @returns {HistoricalData} Processed data for all timeframes
    */
   const processOhlcData = useCallback(
     (data: TimeIntervalDict): HistoricalData => {
@@ -198,12 +413,10 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
       const displayIntervals: TimeInterval[] = ['1m', '5m', '15m', '1h', '4h', 'D', 'W', 'M'];
       const processedData = { ...INITIAL_HISTORICAL_DATA };
 
-      // Process 1-minute data first
       processedData['1m'] = minuteData
         .map((bar: OhlcRow): OhlcBar => formatOhlcBar(bar, '1m'))
         .sort(sortOhlcBars);
 
-      // Process other intervals
       displayIntervals.slice(1).forEach((interval) => {
         const barsPerInterval = getMinutesForInterval(interval);
         processedData[interval] = processIntervalData(minuteData, barsPerInterval);
@@ -215,7 +428,13 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   );
 
   /**
-   * Validates the generated OHLC data
+   * Validates generated OHLC data structure.
+   * Ensures data meets required format and content.
+   *
+   * @function validateGeneratedData
+   * @param {unknown} data - Data to validate
+   * @returns {boolean} True if data is valid
+   * @throws {Error} If data validation fails
    */
   const validateGeneratedData = React.useCallback((data: unknown): data is TimeIntervalDict => {
     if (!data || typeof data !== 'object') {
@@ -235,7 +454,12 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   }, []);
 
   /**
-   * Generates random OHLC data with constrained parameters
+   * Generates random OHLC data for the game.
+   * Uses RandomOHLC class with constrained parameters.
+   *
+   * @function generateRandomData
+   * @returns {TimeIntervalDict} Generated OHLC data
+   * @throws {Error} If data generation fails
    */
   const generateRandomData = useCallback((): TimeIntervalDict => {
     try {
@@ -256,10 +480,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
         throw new Error('Data validation failed');
       }
 
-      // Create a new object with the same data but explicitly typed
       const sortedData: Record<string, OhlcRow[]> = {};
-
-      // Sort the keys and copy the data
       Object.keys(data)
         .sort()
         .forEach((key) => {
@@ -274,7 +495,13 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   }, [validateGeneratedData, logError]);
 
   /**
-   * Updates the game state with new data and choices
+   * Updates game state with new data and choices.
+   * Resets interaction state for new round.
+   *
+   * @function updateGameState
+   * @param {HistoricalData} processedData - Processed OHLC data
+   * @param {string[]} choices - Generated price choices
+   * @param {number} futurePrice - Correct future price
    */
   const updateGameState = React.useCallback(
     (processedData: HistoricalData, choices: string[], futurePrice: number) => {
@@ -290,6 +517,17 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
 
   /**
    * Generates a new round of the game.
+   * Handles data generation, processing, and state updates.
+   *
+   * Process:
+   * 1. Generate random price data
+   * 2. Remove future data based on difficulty
+   * 3. Process data for all timeframes
+   * 4. Generate price choices
+   * 5. Update game state
+   *
+   * @function generateNewRound
+   * @returns {Promise<void>} Resolves when round is ready
    */
   const generateNewRound = React.useCallback((): Promise<void> => {
     if (process.env.NODE_ENV === 'development') {
@@ -301,32 +539,24 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
 
     return new Promise<void>((resolve, reject) => {
       try {
-        // Get raw data
         const rawData = generateRandomData();
 
         if (!rawData || !rawData['D'] || !rawData['1m']) {
           throw new Error('Invalid data generated');
         }
 
-        // Calculate how many minute bars to remove based on difficulty
         const daysToRemove = getFutureIndex(difficulty);
-        const minutesToRemove = daysToRemove * 1440; // 1440 minutes per day
+        const minutesToRemove = daysToRemove * 1440;
 
-        // Store the future price before trimming
         const futurePrice = rawData['D'][rawData['D'].length - 1]?.close;
         if (typeof futurePrice !== 'number') {
           throw new Error('Invalid future price');
         }
 
-        // Remove future data from 1-minute data first
         rawData['1m'] = rawData['1m'].slice(0, -minutesToRemove);
-
-        // Now process the trimmed data into all timeframes
         const processedData = processOhlcData(rawData);
-
         const choices = generatePriceChoices(futurePrice);
 
-        // Update game state
         updateGameState(processedData, choices, futurePrice);
         resolve();
       } catch (error) {
@@ -345,7 +575,12 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
     });
   }, [difficulty, updateGameState, processOhlcData, generateRandomData, logError]);
 
-  // Initialize game on mount or when difficulty changes
+  /**
+   * Initializes game on mount or difficulty change.
+   * Sets up initial game state and data.
+   *
+   * @effect
+   */
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.debug(
@@ -368,8 +603,10 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   }, [generateNewRound]);
 
   /**
-   * Handles the "Next" button click.
-   * Either starts a new round or ends the game after 5 attempts.
+   * Handles game progression after each round.
+   * Either starts new round or ends game after 5 attempts.
+   *
+   * @function handleNext
    */
   const handleNext = useCallback(() => {
     if (attempt >= 5) {
@@ -385,32 +622,30 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   }, [attempt, score, onGameEnd, generateNewRound]);
 
   /**
-   * Handles returning to the main menu.
-   * Cleans up game state and navigates back to welcome screen.
-   * Prevents default event behavior and event bubbling.
+   * Handles returning to main menu.
+   * Cleans up game state and exits to welcome screen.
    *
-   * @param event - Click event from the button
+   * @function handleBackToMenu
+   * @param {React.MouseEvent<HTMLButtonElement>} event - Click event
    */
   const handleBackToMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-
-    // Don't showsresults page if selected from the ChartPredictionView
-
-    // Pass a score with both right and wrong set to 0 to avoid showing results page
     onGameEnd({ right: 0, wrong: 0 });
   };
 
   /**
-   * Handles the user's price prediction submission.
-   * Validates the choice and updates the game state accordingly.
+   * Handles price prediction submission.
+   * Validates selection and updates score.
+   *
+   * @function handleSubmit
+   * @param {React.MouseEvent<HTMLButtonElement>} event - Click event
    */
   const handleSubmit = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
     if (!selectedChoice) {
-      // console.log('No choice selected');
       setError('Please select a price prediction first.');
       return;
     }
@@ -425,10 +660,11 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   };
 
   /**
-   * Handles the next round button click.
-   * Prevents event bubbling and initiates the next round.
+   * Handles next round button click.
+   * Prevents event bubbling and initiates next round.
    *
-   * @param event - Click event from the button
+   * @function handleNextClick
+   * @param {React.MouseEvent<HTMLButtonElement>} event - Click event
    */
   const handleNextClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -442,15 +678,17 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
   );
 
   /**
-   * Handles radio button selection change for price choices.
-   * Updates the selected choice in the component state.
+   * Handles price choice selection.
+   * Updates selected choice in component state.
    *
-   * @param e - Change event from the radio button group
+   * @function handleChoiceChange
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Change event
    */
   const handleChoiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedChoice(e.target.value);
   };
 
+  // Loading state render
   if (loading) {
     return (
       <Box sx={{ ...layoutStyles.flexCenter, minHeight: '100vh' }}>
@@ -459,6 +697,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
     );
   }
 
+  // Main game interface render
   return (
     <Container maxWidth={false} sx={layoutStyles.mainContainer}>
       <Snackbar
@@ -473,6 +712,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
       </Snackbar>
 
       <Paper sx={{ width: '100%', p: 4, ...layoutStyles.glassPanel }}>
+        {/* Game header */}
         <Box sx={{ ...layoutStyles.flexBetween, mb: 4, position: 'relative', zIndex: 1 }}>
           <Typography
             variant="h4"
@@ -489,6 +729,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
           </Button>
         </Box>
 
+        {/* Game status */}
         <Box
           sx={{
             display: 'flex',
@@ -520,6 +761,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
           </Typography>
         </Box>
 
+        {/* Chart container */}
         <Box
           sx={{
             mb: 4,
@@ -535,6 +777,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
           )}
         </Box>
 
+        {/* Price choices */}
         <Box
           sx={{
             mb: 4,
@@ -609,6 +852,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
           </RadioGroup>
         </Box>
 
+        {/* Action buttons */}
         <Box sx={{ position: 'relative', zIndex: 10 }}>
           {showResult ? (
             <>

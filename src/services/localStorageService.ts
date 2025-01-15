@@ -5,22 +5,43 @@
  * Handles saving and retrieving game results, user statistics,
  * and leaderboard data.
  *
+ * Features:
+ * - Game result persistence with automatic user info
+ * - User statistics tracking and aggregation
+ * - Global leaderboard with ranking system
+ * - Debug utilities for development
+ * - Automatic data validation
+ * - Error recovery mechanisms
+ *
+ * Data Structure:
+ * - Games stored as array of GameResult objects
+ * - Each game includes user info, timestamps, and scores
+ * - Data indexed by userId for efficient retrieval
+ * - Sorted by timestamp and score for quick access
+ *
  * @module localStorageService
+ * @requires userInfoService
+ * @requires types
  *********************************************************************/
 
 import { userInfoService } from './userInfoService';
 import { GameResult, UserStats, LeaderboardEntry } from '../types';
 
 /**
- * Storage keys used for different data types in localStorage
+ * Storage keys used for different data types in localStorage.
+ * Centralized key management for consistency and future extensibility.
+ *
  * @const {Object} STORAGE_KEYS
+ * @property {string} GAMES - Key for storing game results array
  */
 const STORAGE_KEYS = {
   GAMES: 'priceProphet_games',
 };
 
 /**
- * Gets the current user's ID, initializing a new user if none exists
+ * Gets the current user's ID, initializing a new user if none exists.
+ * Ensures valid user context for all storage operations.
+ *
  * @returns {string} The current user's ID
  */
 const getCurrentUserId = (): string => {
@@ -32,7 +53,9 @@ const getCurrentUserId = (): string => {
 };
 
 /**
- * Retrieves all stored games from localStorage
+ * Retrieves all stored games from localStorage.
+ * Handles JSON parsing and provides empty array fallback.
+ *
  * @returns {GameResult[]} Array of all stored game results
  */
 const getAllGames = (): GameResult[] => {
@@ -41,11 +64,14 @@ const getAllGames = (): GameResult[] => {
 };
 
 /**
- * Service object containing methods for managing game data in localStorage
+ * Service object containing methods for managing game data in localStorage.
+ * Provides CRUD operations, statistics, and leaderboard functionality.
  */
 export const localStorageService = {
   /**
-   * Saves a new game result to localStorage
+   * Saves a new game result to localStorage.
+   * Automatically adds user info and timestamp to the game data.
+   *
    * @param {Omit<GameResult, 'userId' | 'username' | 'timestamp'>} gameData - Game result data without user info
    * @returns {GameResult} Complete game result with user info and timestamp
    */
@@ -66,7 +92,9 @@ export const localStorageService = {
   },
 
   /**
-   * Retrieves game history for the current user
+   * Retrieves game history for the current user.
+   * Returns most recent games first, limited to 10 entries.
+   *
    * @returns {GameResult[]} Array of user's game results, sorted by timestamp
    */
   getUserGames: (): GameResult[] => {
@@ -78,7 +106,9 @@ export const localStorageService = {
   },
 
   /**
-   * Calculates and returns statistics for the current user's game performance
+   * Calculates and returns statistics for the current user's game performance.
+   * Aggregates metrics across all user's games.
+   *
    * @returns {UserStats} Object containing user's game statistics:
    * - totalGames: Total number of games played
    * - averageScore: Average score across all games
@@ -113,7 +143,9 @@ export const localStorageService = {
   },
 
   /**
-   * Retrieves the global leaderboard showing top performers
+   * Retrieves the global leaderboard showing top performers.
+   * Aggregates user performance and ranks by highest score.
+   *
    * @returns {LeaderboardEntry[]} Array of top 10 players sorted by highest score,
    * each entry containing:
    * - userId: Player's unique identifier
@@ -162,12 +194,12 @@ export const localStorageService = {
   },
 
   /**
-   * Prints all stored data to the console for debugging purposes
-   * Displays:
+   * Prints all stored data to the console for debugging purposes.
+   * Displays detailed information about:
    * - Current user profile
    * - User statistics
    * - Global leaderboard
-   * - Detailed game history
+   * - Detailed game history with guesses
    */
   debugPrintStorage: (): void => {
     const profile = userInfoService.getCurrentUser();

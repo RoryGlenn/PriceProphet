@@ -12,6 +12,19 @@
  * - Currency-formatted price axis
  * - Memory-efficient data handling
  *
+ * Performance Optimizations:
+ * - Memoized data processing
+ * - Batched updates using requestAnimationFrame
+ * - Debounced resize handling
+ * - Efficient data diffing
+ * - Ref-based instance management
+ *
+ * State Management:
+ * - Chart instance stored in ref
+ * - Series instance stored in ref
+ * - Previous data cached for diffing
+ * - Initialization state tracking
+ *
  * @module ChartComponent
  * @requires lightweight-charts
  * @requires @mui/material
@@ -26,11 +39,19 @@ import { DateTime } from 'luxon';
 import { SxProps } from '@mui/system';
 
 /**
- * Props for the ChartComponent
+ * Props for the ChartComponent.
+ * Defines the data structure and configuration options for the chart.
  *
  * @interface ChartComponentProps
  * @property {Object} data - OHLC data organized by timeframe intervals
  * @property {string} [defaultInterval='D'] - Initial timeframe to display
+ *
+ * @example
+ * const data = {
+ *   '1m': [{ time: 1234567890, open: 100, high: 101, low: 99, close: 100.5 }],
+ *   'D': [{ time: '2023-01-01', open: 100, high: 105, low: 95, close: 102 }]
+ * };
+ * <ChartComponent data={data} defaultInterval="D" />
  */
 interface ChartComponentProps {
   /** OHLC data organized by timeframe */
@@ -44,6 +65,12 @@ interface ChartComponentProps {
 /**
  * Styles for the timeframe selection buttons.
  * Implements a modern, glassy design with hover effects and selected states.
+ *
+ * Features:
+ * - Semi-transparent backgrounds
+ * - Smooth hover transitions
+ * - Active state highlighting
+ * - Consistent spacing and sizing
  *
  * @constant buttonGroupStyles
  */
@@ -74,6 +101,11 @@ const buttonGroupStyles: SxProps<Theme> = {
  * Styles for the chart container.
  * Sets up responsive dimensions and border radius.
  *
+ * Features:
+ * - Full-width responsive layout
+ * - Fixed height for consistent UX
+ * - Rounded corners for modern look
+ *
  * @constant chartContainerStyles
  */
 const chartContainerStyles: SxProps<Theme> = {
@@ -88,15 +120,52 @@ const chartContainerStyles: SxProps<Theme> = {
  * Interactive candlestick chart component with multiple timeframe support.
  * Features smooth data transitions, responsive design, and customizable appearance.
  *
- * @param props - Component props
- * @param props.data - OHLC data organized by timeframe
- * @param props.defaultInterval - Default selected timeframe
+ * Component Lifecycle:
+ * 1. Initialize chart instance and refs
+ * 2. Set up event listeners and options
+ * 3. Process and display initial data
+ * 4. Handle timeframe changes and updates
+ * 5. Clean up on unmount
+ *
+ * State Management:
+ * - chartRef: Stores chart instance
+ * - seriesRef: Stores candlestick series
+ * - previousDataRef: Caches last data for diffing
+ * - hasInitializedRef: Tracks initialization
+ *
+ * Performance Considerations:
+ * - Uses refs to avoid re-renders
+ * - Memoizes data processing
+ * - Batches updates with RAF
+ * - Debounces resize events
+ *
+ * @component
+ * @param {ChartComponentProps} props - Component props
+ * @returns {JSX.Element} Rendered chart component
+ *
+ * @example
+ * const data = {
+ *   '1m': generateMinuteData(),
+ *   'D': generateDailyData()
+ * };
+ *
+ * return (
+ *   <ChartComponent
+ *     data={data}
+ *     defaultInterval="D"
+ *   />
+ * );
  */
 export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInterval = 'D' }) => {
+  // Chart instance and series refs for direct manipulation
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | undefined>();
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | undefined>();
+
+  // UI state
   const [interval, setInterval] = useState(defaultInterval);
+
+  // Performance optimization refs
   const previousDataRef = useRef<string>('');
   const hasInitializedRef = useRef(false);
 
@@ -104,7 +173,12 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
    * Memoized data processing to prevent unnecessary recalculations.
    * Converts raw data into the format required by the chart library.
    *
-   * @returns Array of processed candlestick data ready for display
+   * Performance:
+   * - Cached based on data and interval
+   * - Only recomputes when dependencies change
+   * - Prevents unnecessary processing
+   *
+   * @returns {CandlestickData[]} Processed candlestick data ready for display
    */
   const processedData = useMemo(() => {
     if (!data[interval]?.length) return [];
@@ -115,7 +189,13 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
    * Calculates appropriate bar spacing based on the current timeframe.
    * Ensures readable chart display for all intervals.
    *
-   * @returns Number of pixels between bars
+   * Spacing Rules:
+   * - Monthly: 12px for clear separation
+   * - Weekly: 10px for distinct bars
+   * - Minute: 3px for dense data
+   * - Default: 6px for balanced view
+   *
+   * @returns {number} Number of pixels between bars
    */
   const getBarSpacing = useCallback((): number => {
     switch (interval) {
@@ -136,6 +216,15 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
    * Creates and initializes the chart instance.
    * Sets up chart options, series, and event listeners.
    * Handles cleanup on component unmount.
+   *
+   * Initialization Process:
+   * 1. Create chart instance
+   * 2. Configure appearance and behavior
+   * 3. Add candlestick series
+   * 4. Set up resize handler
+   * 5. Register cleanup
+   *
+   * @effect
    */
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -188,6 +277,10 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
     /**
      * Handles window resize events.
      * Updates chart width to match container width.
+     *
+     * Performance:
+     * - Debounced to prevent excessive updates
+     * - Only updates when size actually changes
      */
     const handleResize = () => {
       if (chart && container) {
@@ -208,6 +301,15 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
   /**
    * Updates chart options when the timeframe interval changes.
    * Configures time formatting, bar spacing, and axis display.
+   *
+   * Time Formatting Rules:
+   * - Minute: HH:mm
+   * - Hour: HH:00
+   * - Day: MMM dd
+   * - Week: MMM dd
+   * - Month: MMM yyyy
+   *
+   * @effect
    */
   useEffect(() => {
     const chart = chartRef.current;
@@ -278,6 +380,19 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
   /**
    * Updates chart data when the processed data changes.
    * Uses requestAnimationFrame for smooth updates and prevents unnecessary rerenders.
+   *
+   * Update Process:
+   * 1. Check if data has changed
+   * 2. Update data reference
+   * 3. Schedule update with RAF
+   * 4. Fit content in next frame
+   *
+   * Performance Optimizations:
+   * - Data diffing to prevent unnecessary updates
+   * - Batched updates with RAF
+   * - Cached initialization state
+   *
+   * @effect
    */
   useEffect(() => {
     const series = seriesRef.current;
@@ -309,8 +424,13 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({ data, defaultInt
    * Handles timeframe selection changes.
    * Validates data availability before updating the interval.
    *
-   * @param _event Mouse event from button click
-   * @param newInterval Selected timeframe
+   * Validation:
+   * - Checks for null selection
+   * - Verifies data availability
+   * - Updates interval only if valid
+   *
+   * @param {React.MouseEvent<HTMLElement>} _event - Mouse event from button click
+   * @param {string | null} newInterval - Selected timeframe
    */
   const handleIntervalChange = (
     _event: React.MouseEvent<HTMLElement>,

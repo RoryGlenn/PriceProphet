@@ -1,9 +1,35 @@
 /*********************************************************************
  * WelcomePage.tsx
  *
- * Welcome screen component that introduces the game and allows
- * players to select their difficulty level before starting.
- * Features a modern glass morphism design with neon accents.
+ * Landing page component that introduces the game and provides difficulty
+ * selection. Features an immersive UI with mystical theme and interactive
+ * elements.
+ *
+ * Features:
+ * - Interactive difficulty selection
+ * - Engaging welcome message
+ * - Glass morphism design
+ * - Neon accent effects
+ * - Responsive layout
+ * - Animated hover states
+ *
+ * UI Sections:
+ * 1. Game Title
+ * 2. Welcome Message
+ * 3. Difficulty Selection
+ * 4. Start Game Button
+ *
+ * Design Elements:
+ * - Gradient backgrounds
+ * - Glass panels
+ * - Neon text effects
+ * - Interactive radio buttons
+ * - Custom button styles
+ *
+ * @module WelcomePage
+ * @requires react
+ * @requires @mui/material
+ * @requires ../types
  *********************************************************************/
 
 import React, { useState, useEffect } from 'react';
@@ -20,15 +46,22 @@ import {
 import { DifficultyLevel } from '../types';
 
 /**
- * Props for the WelcomePage component
+ * Props interface for the WelcomePage component.
+ * Defines the callback for game initiation.
+ *
+ * @interface WelcomePageProps
+ * @property {(difficulty: DifficultyLevel) => void} onStartGame - Callback function to initiate game with selected difficulty
  */
 interface WelcomePageProps {
-  /** Callback function called when the user starts the game */
   onStartGame: (difficulty: DifficultyLevel) => void;
 }
 
 /**
- * Descriptions for each difficulty level
+ * Mapping of difficulty levels to their descriptions.
+ * Provides clear explanation of each difficulty's prediction timeframe.
+ *
+ * @constant
+ * @type {Record<DifficultyLevel, string>}
  */
 const difficultyDescriptions: Record<DifficultyLevel, string> = {
   Easy: 'Predict the price 1 day into the future',
@@ -37,24 +70,67 @@ const difficultyDescriptions: Record<DifficultyLevel, string> = {
 };
 
 /**
- * Welcome page component that displays game introduction and difficulty selection.
- * Features a modern glass morphism design with neon accents.
+ * Welcome page component that serves as the entry point to the game.
+ * Provides an immersive introduction and difficulty selection interface.
  *
- * @param props - Component props
- * @param props.onStartGame - Callback function called when the user starts the game
+ * Component Sections:
+ * 1. Title Section
+ *    - Game title with neon effect
+ *    - Subtitle with theme message
+ *
+ * 2. Introduction
+ *    - Welcome message
+ *    - Game description
+ *    - Mystical theme elements
+ *
+ * 3. Difficulty Selection
+ *    - Interactive radio buttons
+ *    - Difficulty descriptions
+ *    - Visual feedback on selection
+ *
+ * 4. Game Start
+ *    - Prominent start button
+ *    - Gradient effect
+ *    - Hover animations
+ *
+ * @component
+ * @param {WelcomePageProps} props - Component props
+ * @returns {JSX.Element} Rendered welcome page
+ *
+ * @example
+ * <WelcomePage
+ *   onStartGame={(difficulty) => handleGameStart(difficulty)}
+ * />
  */
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
+  /**
+   * State to track the currently selected difficulty level.
+   * Defaults to 'Easy' for new players.
+   */
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('Easy');
 
-  // Track component mounting
+  /**
+   * Effect hook for component initialization.
+   * Can be used for future analytics or user preference loading.
+   */
   useEffect(() => {
-    // Component initialization
+    // Component initialization logic
   }, []);
 
+  /**
+   * Handles difficulty selection changes.
+   * Updates state and provides visual feedback.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} event - Change event from radio input
+   */
   const handleDifficultyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDifficulty(event.target.value as DifficultyLevel);
   };
 
+  /**
+   * Initiates game start with selected difficulty.
+   * Triggers the onStartGame callback with current difficulty.
+   */
   const handleStartClick = () => {
     onStartGame(selectedDifficulty);
   };
@@ -71,6 +147,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
         padding: 0,
       }}
     >
+      {/* Main Content Panel */}
       <Paper
         elevation={24}
         sx={{
@@ -99,6 +176,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           },
         }}
       >
+        {/* Game Title */}
         <Typography
           variant="h3"
           component="h1"
@@ -112,6 +190,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           Price Prophet
         </Typography>
 
+        {/* Subtitle */}
         <Typography
           variant="h6"
           sx={{
@@ -124,6 +203,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           Unlock Your Powers of Market Prophecy! ✨
         </Typography>
 
+        {/* Welcome Message */}
         <Typography
           variant="body1"
           sx={{
@@ -138,6 +218,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           fortune teller to grand oracle. The prophecy begins... ✨📈
         </Typography>
 
+        {/* Difficulty Selection */}
         <RadioGroup value={selectedDifficulty} onChange={handleDifficultyChange} sx={{ mb: 5 }}>
           {Object.entries(difficultyDescriptions).map(([difficulty, description]) => (
             <Box
@@ -212,6 +293,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onStartGame }) => {
           ))}
         </RadioGroup>
 
+        {/* Start Game Button */}
         <Button
           component="button"
           variant="contained"

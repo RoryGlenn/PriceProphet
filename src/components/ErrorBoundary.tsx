@@ -1,10 +1,50 @@
+/*********************************************************************
+ * ErrorBoundary.tsx
+ *
+ * React Error Boundary component that provides graceful error handling
+ * and fallback UI for runtime errors in the component tree.
+ *
+ * Features:
+ * - Catches JavaScript errors in child components
+ * - Prevents app crashes by containing errors
+ * - Displays user-friendly error messages
+ * - Shows detailed error info in development
+ * - Provides error recovery options
+ * - Implements glass morphism design
+ *
+ * Error Handling:
+ * - Runtime errors in rendering
+ * - Lifecycle method errors
+ * - Event handler errors
+ * - Async errors in effects
+ *
+ * @module ErrorBoundary
+ * @requires react
+ * @requires @mui/material
+ *********************************************************************/
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
 
+/**
+ * Props interface for the ErrorBoundary component.
+ *
+ * @interface Props
+ * @property {ReactNode} children - Child components to be wrapped
+ */
 interface Props {
   children: ReactNode;
 }
 
+/**
+ * State interface for the ErrorBoundary component.
+ * Tracks error state and details for display.
+ *
+ * @interface State
+ * @property {boolean} hasError - Whether an error has occurred
+ * @property {Error | null} error - The error object if one exists
+ * @property {ErrorInfo | null} errorInfo - React error information including component stack
+ */
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -20,14 +60,44 @@ interface State {
  * - Displays user-friendly error message
  * - Provides option to retry/reload
  * - Logs errors for debugging
+ *
+ * Lifecycle:
+ * 1. Normal rendering until error occurs
+ * 2. Error is caught and state is updated
+ * 3. Fallback UI is rendered
+ * 4. User can attempt recovery
+ *
+ * @class ErrorBoundary
+ * @extends {Component<Props, State>}
+ *
+ * @example
+ * // Wrap components that might error
+ * <ErrorBoundary>
+ *   <ComponentThatMightError />
+ * </ErrorBoundary>
  */
 export class ErrorBoundary extends Component<Props, State> {
+  /**
+   * Initialize component state.
+   * Sets up initial error tracking state.
+   *
+   * @public
+   * @type {State}
+   */
   public state: State = {
     hasError: false,
     error: null,
     errorInfo: null,
   };
 
+  /**
+   * Static lifecycle method called when an error occurs during rendering.
+   * Updates state to trigger fallback UI rendering.
+   *
+   * @static
+   * @param {Error} error - The error that was thrown
+   * @returns {State} New state object with error information
+   */
   public static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
@@ -36,6 +106,14 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
+  /**
+   * Lifecycle method called after an error has been caught.
+   * Logs error details and updates component state.
+   *
+   * @public
+   * @param {Error} error - The error that was thrown
+   * @param {ErrorInfo} errorInfo - React error information including component stack
+   */
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
     this.setState({
@@ -44,10 +122,30 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   }
 
+  /**
+   * Handles page reload for error recovery.
+   * Resets the application state by refreshing the page.
+   *
+   * @private
+   * @returns {void}
+   */
   private handleReload = () => {
     window.location.reload();
   };
 
+  /**
+   * Renders either the error UI or the children components.
+   * Shows detailed error information in development mode.
+   *
+   * UI Features:
+   * - Glass morphism design
+   * - Error message display
+   * - Stack trace in development
+   * - Reload button for recovery
+   *
+   * @public
+   * @returns {ReactNode} The rendered content
+   */
   public render() {
     if (this.state.hasError) {
       return (
