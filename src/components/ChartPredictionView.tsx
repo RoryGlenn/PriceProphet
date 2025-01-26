@@ -84,7 +84,6 @@ import {
 import { CandlestickChart } from './CandlestickChart';
 import { RandomOHLC, TimeIntervalDict } from '../randomOHLC';
 import { OhlcBar, OhlcRow, DifficultyLevel, TimeInterval, MINUTES_PER_INTERVAL } from '../types';
-import { Time } from 'lightweight-charts';
 import { generatePriceChoices, formatPrice } from '../utils/priceUtils';
 import { buttonStyles, layoutStyles } from '../styles/theme';
 
@@ -335,13 +334,14 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
    * @returns {OhlcBar} Formatted OHLC bar
    */
   const formatOhlcBar = useCallback((bar: OhlcRow, timeframe: string): OhlcBar => {
+    const date = new Date(bar.timestamp * 1000);
     const timeValue =
       timeframe === 'D' || timeframe === 'W' || timeframe === 'M'
-        ? new Date(bar.timestamp * 1000).toISOString().split('T')[0]
+        ? date.toISOString().split('T')[0]
         : bar.timestamp;
 
     return {
-      time: timeValue as Time,
+      time: timeValue,
       open: bar.open,
       high: bar.high,
       low: bar.low,
@@ -389,7 +389,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
       }
 
       return chunks.map((chunk) => ({
-        time: chunk[0].timestamp as Time,
+        time: chunk[0].timestamp,
         open: chunk[0].open,
         high: Math.max(...chunk.map((bar) => bar.high)),
         low: Math.min(...chunk.map((bar) => bar.low)),
@@ -470,7 +470,7 @@ export const ChartPredictionView: React.FC<ChartPredictionViewProps> = ({
       };
 
       if (process.env.NODE_ENV === 'development') {
-        console.debug('[ChartPredictionView] Generating data with:', config);
+        console.log('[ChartPredictionView] Generating data with:', config);
       }
 
       const randOHLC = new RandomOHLC(config);

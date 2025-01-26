@@ -1,0 +1,5 @@
+Fix 1min, 5min, 15min bars
+Show white text on candlebar graph black background
+display x-axis and y-axis labels
+format y-axis labels to show 2 decimal places in money format
+have graph zoom in and out smoothly when mouse wheel is used 

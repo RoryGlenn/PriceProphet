@@ -1,79 +1,48 @@
-/*********************************************************************
- * CandlestickChart.tsx
- *
- * Interactive candlestick chart component using TradingView's lightweight-charts.
- * Supports multiple timeframes, smooth data transitions, and responsive design.
- *
- * Features:
- * - Multiple timeframe support (1m to Monthly)
- * - Smooth data transitions with animation frames
- * - Responsive design with automatic resizing
- * - Custom date formatting for different intervals
- * - Currency-formatted price axis
- * - Memory-efficient data handling
- *
- * Performance Optimizations:
- * - Memoized data processing
- * - Batched updates using requestAnimationFrame
- * - Debounced resize handling
- * - Efficient data diffing
- * - Ref-based instance management
- *
- * State Management:
- * - Chart instance stored in ref
- * - Series instance stored in ref
- * - Previous data cached for diffing
- * - Initialization state tracking
- *
- * @module CandlestickChart
- * @requires lightweight-charts
- * @requires @mui/material
- * @requires luxon
- *********************************************************************/
-
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { createChart, Time, IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
-import { Box, ToggleButton, ToggleButtonGroup, Theme } from '@mui/material';
+import React, { useRef, useState } from 'react';
+import { format } from 'd3-format';
+import { timeFormat } from 'd3-time-format';
+import { ChartCanvas, Chart } from '@react-financial-charts/core';
+import { XAxis, YAxis } from '@react-financial-charts/axes';
+import { discontinuousTimeScaleProviderBuilder } from '@react-financial-charts/scales';
+import { CandlestickSeries, LineSeries } from '@react-financial-charts/series';
+import { OHLCTooltip } from '@react-financial-charts/tooltip';
+import {
+  CrossHairCursor,
+  MouseCoordinateY,
+  EdgeIndicator,
+} from '@react-financial-charts/coordinates';
+import { rsi } from '@react-financial-charts/indicators';
+import {
+  Box,
+  ToggleButton,
+  ToggleButtonGroup,
+  Theme,
+  FormGroup,
+  FormControlLabel,
+  Switch,
+  TextField,
+  Popover,
+  Typography,
+  IconButton,
+  Stack,
+  Icon,
+} from '@mui/material';
 import { OhlcBar } from '../types';
-import { DateTime } from 'luxon';
 import { SxProps } from '@mui/system';
 
-/**
- * Props for the CandlestickChart component.
- * Defines the data structure and configuration options for the chart.
- *
- * @interface CandlestickChartProps
- * @property {Object} data - OHLC data organized by timeframe intervals
- * @property {string} [defaultInterval='D'] - Initial timeframe to display
- *
- * @example
- * const data = {
- *   '1m': [{ time: 1234567890, open: 100, high: 101, low: 99, close: 100.5 }],
- *   'D': [{ time: '2023-01-01', open: 100, high: 105, low: 95, close: 102 }]
- * };
- * <CandlestickChart data={data} defaultInterval="D" />
- */
 interface CandlestickChartProps {
-  /** OHLC data organized by timeframe */
   data: {
     [key: string]: OhlcBar[];
   };
-  /** Default selected timeframe */
   defaultInterval?: string;
 }
 
-/**
- * Styles for the timeframe selection buttons.
- * Implements a modern, glassy design with hover effects and selected states.
- *
- * Features:
- * - Semi-transparent backgrounds
- * - Smooth hover transitions
- * - Active state highlighting
- * - Consistent spacing and sizing
- *
- * @constant buttonGroupStyles
- */
+interface IndicatorConfig {
+  enabled: boolean;
+  period: number;
+  color: string;
+}
+
 const buttonGroupStyles: SxProps<Theme> = {
   mb: 2,
   display: 'flex',
@@ -97,355 +66,115 @@ const buttonGroupStyles: SxProps<Theme> = {
   },
 };
 
-/**
- * Styles for the chart container.
- * Sets up responsive dimensions and border radius.
- *
- * Features:
- * - Full-width responsive layout
- * - Fixed height for consistent UX
- * - Rounded corners for modern look
- *
- * @constant chartContainerStyles
- */
 const chartContainerStyles: SxProps<Theme> = {
   width: '100%',
   height: '400px',
-  '& .tv-lightweight-charts': {
+  '& canvas': {
     borderRadius: '8px',
   },
 };
 
-/**
- * Interactive candlestick chart component with multiple timeframe support.
- * Features smooth data transitions, responsive design, and customizable appearance.
- *
- * Component Lifecycle:
- * 1. Initialize chart instance and refs
- * 2. Set up event listeners and options
- * 3. Process and display initial data
- * 4. Handle timeframe changes and updates
- * 5. Clean up on unmount
- *
- * State Management:
- * - chartRef: Stores chart instance
- * - seriesRef: Stores candlestick series
- * - previousDataRef: Caches last data for diffing
- * - hasInitializedRef: Tracks initialization
- *
- * Performance Considerations:
- * - Uses refs to avoid re-renders
- * - Memoizes data processing
- * - Batches updates with RAF
- * - Debounces resize events
- *
- * @component
- * @param {CandlestickChartProps} props - Component props
- * @returns {JSX.Element} Rendered chart component
- *
- * @example
- * const data = {
- *   '1m': generateMinuteData(),
- *   'D': generateDailyData()
- * };
- *
- * return (
- *   <CandlestickChart
- *     data={data}
- *     defaultInterval="D"
- *   />
- * );
- */
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   data,
   defaultInterval = 'D',
 }) => {
-  // Chart instance and series refs for direct manipulation
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | undefined>();
-  const seriesRef = useRef<ISeriesApi<'Candlestick'> | undefined>();
-
-  // UI state
+  const containerRef = useRef<HTMLDivElement>(null);
   const [interval, setInterval] = useState(defaultInterval);
+  const [rsiConfig, setRsiConfig] = useState<IndicatorConfig>({
+    enabled: false,
+    period: 14,
+    color: '#E91E63',
+  });
 
-  // Performance optimization refs
-  const previousDataRef = useRef<string>('');
-  const hasInitializedRef = useRef(false);
+  // Settings popover state
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
-  /**
-   * Memoized data processing to prevent unnecessary recalculations.
-   * Converts raw data into the format required by the chart library.
-   *
-   * Performance:
-   * - Cached based on data and interval
-   * - Only recomputes when dependencies change
-   * - Prevents unnecessary processing
-   *
-   * @returns {CandlestickData[]} Processed candlestick data ready for display
-   */
-  const processedData = useMemo(() => {
-    if (!data[interval]?.length) return [];
-    return data[interval] as CandlestickData[];
-  }, [data, interval]);
+  const handleSettingsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-  /**
-   * Calculates appropriate bar spacing based on the current timeframe.
-   * Ensures readable chart display for all intervals.
-   *
-   * Spacing Rules:
-   * - Monthly: 12px for clear separation
-   * - Weekly: 10px for distinct bars
-   * - Minute: 3px for dense data
-   * - Default: 6px for balanced view
-   *
-   * @returns {number} Number of pixels between bars
-   */
-  const getBarSpacing = useCallback((): number => {
-    switch (interval) {
-      case 'M':
-        return 12; // Monthly bars need more space
-      case 'W':
-        return 10; // Weekly bars slightly less than monthly
-      case '1m':
-      case '5m':
-      case '15m':
-        return 3; // Minute bars can be closer together
-      default:
-        return 6; // Default spacing for other intervals
+  const handleSettingsClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handlePeriodChange = (value: string) => {
+    const period = parseInt(value);
+    if (!isNaN(period) && period > 0) {
+      setRsiConfig((prev) => ({
+        ...prev,
+        period,
+      }));
     }
-  }, [interval]);
+  };
 
-  /**
-   * Creates and initializes the chart instance.
-   * Sets up chart options, series, and event listeners.
-   * Handles cleanup on component unmount.
-   *
-   * Initialization Process:
-   * 1. Create chart instance
-   * 2. Configure appearance and behavior
-   * 3. Add candlestick series
-   * 4. Set up resize handler
-   * 5. Register cleanup
-   *
-   * @effect
-   */
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
+  const handleRsiToggle = () => {
+    setRsiConfig((prev) => ({
+      ...prev,
+      enabled: !prev.enabled,
+    }));
+  };
 
-    const container = chartContainerRef.current;
-    const chart = createChart(container, {
-      width: container.clientWidth,
-      height: 400,
-      layout: {
-        background: { color: 'transparent' },
-        textColor: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 12,
-        fontFamily: "'Roboto', 'Helvetica', 'Arial', sans-serif",
-      },
-      grid: {
-        vertLines: { color: 'rgba(43, 43, 67, 0.5)' },
-        horzLines: { color: 'rgba(43, 43, 67, 0.5)' },
-      },
-      localization: {
-        priceFormatter: (price: number) => {
-          return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(price);
-        },
-      },
-      timeScale: {
-        timeVisible: false,
-        secondsVisible: false,
-        borderColor: 'rgba(43, 43, 67, 0.5)',
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        rightOffset: 12,
-        barSpacing: 6,
-        minBarSpacing: 2,
-      },
-    });
-
-    chartRef.current = chart;
-    seriesRef.current = chart.addCandlestickSeries({
-      upColor: '#00F5A0',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#00F5A0',
-      wickDownColor: '#ef5350',
-    });
-
-    /**
-     * Handles window resize events.
-     * Updates chart width to match container width.
-     *
-     * Performance:
-     * - Debounced to prevent excessive updates
-     * - Only updates when size actually changes
-     */
-    const handleResize = () => {
-      if (chart && container) {
-        chart.applyOptions({
-          width: container.clientWidth,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
-  }, []);
-
-  /**
-   * Updates chart options when the timeframe interval changes.
-   * Configures time formatting, bar spacing, and axis display.
-   *
-   * Time Formatting Rules:
-   * - Minute: HH:mm
-   * - Hour: HH:00
-   * - Day: MMM dd
-   * - Week: MMM dd
-   * - Month: MMM yyyy
-   *
-   * @effect
-   */
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    chart.applyOptions({
-      timeScale: {
-        timeVisible: interval.endsWith('m') || interval.endsWith('h'),
-        barSpacing: getBarSpacing(),
-        tickMarkFormatter: (time: Time) => {
-          const date =
-            typeof time === 'number'
-              ? DateTime.fromSeconds(time)
-              : DateTime.fromFormat(time as string, 'yyyy-MM-dd');
-
-          // Simplified date formats to reduce clutter
-          if (interval.endsWith('m')) {
-            return date.toFormat('HH:mm');
-          }
-          if (interval.endsWith('h')) {
-            return date.toFormat('HH:00');
-          }
-          if (interval === 'D') {
-            return date.toFormat('MMM dd');
-          }
-          if (interval === 'W') {
-            return date.toFormat('MMM dd');
-          }
-          if (interval === 'M') {
-            return date.toFormat('MMM yyyy');
-          }
-          return date.toFormat('MMM dd');
-        },
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        rightOffset: 12,
-        minBarSpacing: 2,
-      },
-      localization: {
-        timeFormatter: (time: Time) => {
-          const date =
-            typeof time === 'number'
-              ? DateTime.fromSeconds(time)
-              : DateTime.fromFormat(time as string, 'yyyy-MM-dd');
-
-          // Keep detailed format for tooltips
-          if (interval.endsWith('m')) {
-            return date.toFormat('MMM dd HH:mm');
-          }
-          if (interval.endsWith('h')) {
-            return date.toFormat('MMM dd HH:00');
-          }
-          if (interval === 'D') {
-            return date.toFormat('MMM dd yyyy');
-          }
-          if (interval === 'W') {
-            return date.toFormat('MMM dd yyyy');
-          }
-          if (interval === 'M') {
-            return date.toFormat('MMM yyyy');
-          }
-          return date.toFormat('MMM dd yyyy');
-        },
-      },
-    });
-  }, [interval, getBarSpacing]);
-
-  /**
-   * Updates chart data when the processed data changes.
-   * Uses requestAnimationFrame for smooth updates and prevents unnecessary rerenders.
-   *
-   * Update Process:
-   * 1. Check if data has changed
-   * 2. Update data reference
-   * 3. Schedule update with RAF
-   * 4. Fit content in next frame
-   *
-   * Performance Optimizations:
-   * - Data diffing to prevent unnecessary updates
-   * - Batched updates with RAF
-   * - Cached initialization state
-   *
-   * @effect
-   */
-  useEffect(() => {
-    const series = seriesRef.current;
-    const chart = chartRef.current;
-    if (!series || !chart || !processedData.length) return;
-
-    // Check if data has actually changed to prevent unnecessary updates
-    const currentDataString = JSON.stringify(processedData);
-    if (currentDataString === previousDataRef.current && hasInitializedRef.current) return;
-    previousDataRef.current = currentDataString;
-
-    // Batch the updates for better performance
-    requestAnimationFrame(() => {
-      if (series) {
-        series.setData(processedData);
-        hasInitializedRef.current = true;
-
-        // Fit content in the next frame for smoother rendering
-        requestAnimationFrame(() => {
-          if (chart) {
-            chart.timeScale().fitContent();
-          }
-        });
-      }
-    });
-  }, [processedData]);
-
-  /**
-   * Handles timeframe selection changes.
-   * Validates data availability before updating the interval.
-   *
-   * Validation:
-   * - Checks for null selection
-   * - Verifies data availability
-   * - Updates interval only if valid
-   *
-   * @param {React.MouseEvent<HTMLElement>} _event - Mouse event from button click
-   * @param {string | null} newInterval - Selected timeframe
-   */
   const handleIntervalChange = (
     _event: React.MouseEvent<HTMLElement>,
     newInterval: string | null
   ) => {
-    if (newInterval !== null) {
-      // Pre-process data before setting new interval for smoother transition
-      if (data[newInterval]?.length) {
-        setInterval(newInterval);
-      }
+    if (newInterval !== null && data[newInterval]?.length) {
+      setInterval(newInterval);
     }
   };
+
+  // Format helpers
+  const timeFormatter = timeFormat('%Y-%m-%d %H:%M');
+  const candlesAppearance = {
+    wickStroke: (d: OhlcBar) => (d.close > d.open ? '#00F5A0' : '#ef5350'),
+    fill: (d: OhlcBar) => (d.close > d.open ? '#00F5A0' : '#ef5350'),
+    stroke: (d: OhlcBar) => (d.close > d.open ? '#00F5A0' : '#ef5350'),
+    candleStrokeWidth: 1,
+    widthRatio: 0.8,
+  };
+
+  // Process data for the chart
+  const chartData = data[interval] || [];
+  const xScaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor((d: OhlcBar) => {
+    const timestamp = typeof d.time === 'string' ? Date.parse(d.time) : Number(d.time) * 1000;
+    return new Date(timestamp);
+  });
+  const { data: scaledData, xScale, xAccessor, displayXAccessor } = xScaleProvider(chartData);
+
+  // Calculate the default display window based on interval
+  const getDefaultDisplayWindow = () => {
+    switch (interval) {
+      case '1m':
+        return 120; // Show 2 hours of 1-minute data
+      case '5m':
+        return 144; // Show 12 hours of 5-minute data
+      case '15m':
+        return 96; // Show 24 hours of 15-minute data
+      case '1h':
+        return 168; // Show 7 days of hourly data
+      default:
+        return scaledData.length; // Show all data for larger intervals
+    }
+  };
+
+  const displayWindow = getDefaultDisplayWindow();
+  const max = xAccessor(scaledData[scaledData.length - 1]);
+  const min = xAccessor(scaledData[Math.max(0, scaledData.length - displayWindow)]);
+  const xExtents = [min, max];
+
+  const gridHeight = 400;
+  const chartHeight = rsiConfig.enabled ? gridHeight * 0.7 : gridHeight;
+  const rsiHeight = gridHeight * 0.3;
+
+  // Calculate RSI
+  const rsiCalculator = rsi()
+    .options({ windowSize: rsiConfig.period })
+    .merge((d: any, c: any) => {
+      d.rsi = c;
+    })
+    .accessor((d: any) => d.rsi);
+
+  const calculatedData = rsiCalculator(scaledData);
 
   return (
     <Box>
@@ -483,7 +212,107 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>
-      <Box ref={chartContainerRef} sx={chartContainerStyles} />
+
+      {/* Technical Indicators Controls */}
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+        <FormGroup row>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FormControlLabel
+              control={
+                <Switch checked={rsiConfig.enabled} onChange={handleRsiToggle} color="primary" />
+              }
+              label={`RSI(${rsiConfig.period})`}
+            />
+            <IconButton size="small" onClick={handleSettingsClick} sx={{ color: rsiConfig.color }}>
+              <Icon>settings</Icon>
+            </IconButton>
+          </Stack>
+        </FormGroup>
+      </Box>
+
+      {/* Settings Popover */}
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={handleSettingsClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+      >
+        <Box sx={{ p: 2, width: 200 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            RSI Settings
+          </Typography>
+          <TextField
+            label="Period"
+            type="number"
+            size="small"
+            fullWidth
+            value={rsiConfig.period}
+            onChange={(e) => handlePeriodChange(e.target.value)}
+            inputProps={{ min: 1, max: 200 }}
+            sx={{ mt: 1 }}
+          />
+        </Box>
+      </Popover>
+
+      {/* Chart */}
+      <Box ref={containerRef} sx={chartContainerStyles}>
+        {containerRef.current && (
+          <ChartCanvas
+            height={gridHeight}
+            ratio={3}
+            width={containerRef.current.clientWidth}
+            margin={{ left: 50, right: 50, top: 10, bottom: 50 }}
+            data={calculatedData}
+            xScale={xScale}
+            xAccessor={xAccessor}
+            displayXAccessor={displayXAccessor}
+            xExtents={xExtents}
+            seriesName="PriceChart"
+          >
+            <Chart id={1} height={chartHeight} yExtents={(d: OhlcBar) => [d.high, d.low]}>
+              <XAxis showTicks={true} showTickLabel={true} tickFormat={timeFormatter} />
+              <YAxis showGridLines tickFormat={format('.2f')} />
+              <CandlestickSeries {...candlesAppearance} />
+              <MouseCoordinateY rectWidth={60} displayFormat={format('.2f')} />
+              <EdgeIndicator
+                itemType="last"
+                rectWidth={80}
+                fill={(d: OhlcBar) => (d.close > d.open ? '#00F5A0' : '#ef5350')}
+                lineStroke={(d: OhlcBar) => (d.close > d.open ? '#00F5A0' : '#ef5350')}
+                displayFormat={format('.2f')}
+                yAccessor={(d: OhlcBar) => d.close}
+              />
+              <OHLCTooltip origin={[8, 16]} />
+            </Chart>
+
+            {rsiConfig.enabled && (
+              <Chart
+                id={2}
+                height={rsiHeight}
+                yExtents={[0, 100]}
+                origin={(w: number, h: number) => [0, h - rsiHeight]}
+              >
+                <XAxis showGridLines />
+                <YAxis tickValues={[30, 50, 70]} showGridLines />
+                <LineSeries
+                  yAccessor={rsiCalculator.accessor()}
+                  strokeStyle={rsiConfig.color}
+                  strokeWidth={2}
+                />
+                <MouseCoordinateY rectWidth={60} displayFormat={format('.2f')} />
+              </Chart>
+            )}
+            <CrossHairCursor />
+          </ChartCanvas>
+        )}
+      </Box>
     </Box>
   );
 };

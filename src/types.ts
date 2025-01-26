@@ -9,8 +9,6 @@
  * @description Core type definitions for the PriceProphet application
  *********************************************************************/
 
-import { Time } from 'lightweight-charts';
-
 /**
  * Time intervals supported by the chart.
  * - 1m: 1 minute
@@ -79,17 +77,17 @@ export interface RandomOhlcConfig {
 
 /**
  * OHLC data structure required by the charting library.
- * This format is compatible with lightweight-charts' requirements.
+ * This format is compatible with react-financial-charts requirements.
  *
  * @interface OhlcBar
- * @property {Time} time - Either Unix timestamp (for intraday) or 'yyyy-MM-dd' string (for daily+)
+ * @property {Date | string | number} time - Date object, ISO date string, or Unix timestamp
  * @property {number} open - Opening price of the period
  * @property {number} high - Highest price during the period
  * @property {number} low - Lowest price during the period
  * @property {number} close - Closing price of the period
  */
 export interface OhlcBar {
-  time: Time; // Either Unix timestamp or date string
+  time: Date | string | number; // Date object, ISO date string, or Unix timestamp
   open: number; // Opening price
   high: number; // Highest price
   low: number; // Lowest price

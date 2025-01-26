@@ -11,6 +11,7 @@
  * - Difficulty level selection
  * - Theme provider integration
  * - Debug mode support
+ * - User profile initialization and management
  *
  * Game Flow:
  * 1. Welcome Screen (difficulty selection)
@@ -35,7 +36,7 @@ import { ResultsPage } from './components/ResultsPage';
 import { localStorageService } from './services/localStorageService';
 import { Score } from './components/ChartPredictionView';
 import { DifficultyLevel } from './types';
-import { userInfoService } from './services/userInfoService';
+import { initializeUser } from './services/userInfoService';
 
 /**
  * Game configuration interface defining the current state of the game.
@@ -148,7 +149,7 @@ function App() {
    * Creates or retrieves existing user profile from localStorage.
    */
   useEffect(() => {
-    userInfoService.initializeUser();
+    initializeUser();
   }, []);
 
   /**
