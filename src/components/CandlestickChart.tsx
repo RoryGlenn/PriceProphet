@@ -278,9 +278,16 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           >
             <Chart id={1} height={chartHeight} yExtents={(d: OhlcBar) => [d.high, d.low]}>
               <XAxis showTicks={true} showTickLabel={true} tickFormat={timeFormatter} />
-              <YAxis showGridLines tickFormat={format('.2f')} />
+              <YAxis showGridLines tickFormat={format('.2f')} tickLabelFill="#FFFFFF" />
+              <YAxis
+                showGridLines
+                tickFormat={format('.2f')}
+                tickLabelFill="#FFFFFF"
+                axisAt="right"
+                orient="right"
+              />
               <CandlestickSeries {...candlesAppearance} />
-              <MouseCoordinateY rectWidth={60} displayFormat={format('.2f')} />
+              <MouseCoordinateY rectWidth={60} displayFormat={format('.2f')} fill="#FFFFFF" />
               <EdgeIndicator
                 itemType="last"
                 rectWidth={80}
@@ -289,7 +296,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 displayFormat={format('.2f')}
                 yAccessor={(d: OhlcBar) => d.close}
               />
-              <OHLCTooltip origin={[8, 16]} />
+              <OHLCTooltip origin={[8, 16]} textFill="#FFFFFF" />
             </Chart>
 
             {rsiConfig.enabled && (
@@ -300,13 +307,20 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 origin={(w: number, h: number) => [0, h - rsiHeight]}
               >
                 <XAxis showGridLines />
-                <YAxis tickValues={[30, 50, 70]} showGridLines />
+                <YAxis tickValues={[30, 50, 70]} showGridLines tickLabelFill="#FFFFFF" />
+                <YAxis
+                  tickValues={[30, 50, 70]}
+                  showGridLines
+                  tickLabelFill="#FFFFFF"
+                  axisAt="right"
+                  orient="right"
+                />
                 <LineSeries
                   yAccessor={rsiCalculator.accessor()}
                   strokeStyle={rsiConfig.color}
                   strokeWidth={2}
                 />
-                <MouseCoordinateY rectWidth={60} displayFormat={format('.2f')} />
+                <MouseCoordinateY rectWidth={60} displayFormat={format('.2f')} fill="#FFFFFF" />
               </Chart>
             )}
             <CrossHairCursor />

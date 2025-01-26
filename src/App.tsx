@@ -36,7 +36,7 @@ import { ResultsPage } from './components/ResultsPage';
 import { localStorageService } from './services/localStorageService';
 import { Score } from './components/ChartPredictionView';
 import { DifficultyLevel } from './types';
-import { initializeUser } from './services/userInfoService';
+import { userInfoService } from './services/userInfoService';
 
 /**
  * Game configuration interface defining the current state of the game.
@@ -149,7 +149,7 @@ function App() {
    * Creates or retrieves existing user profile from localStorage.
    */
   useEffect(() => {
-    initializeUser();
+    userInfoService.initializeUser();
   }, []);
 
   /**
